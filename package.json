@@ -1,0 +1,51 @@
+{
+  "name": "@stableops/mcp-server",
+  "version": "0.1.0",
+  "private": false,
+  "license": "Apache-2.0",
+  "description": "Stdio MCP server that exposes the StableOps SDK as policy-scoped tools for AI agents.",
+  "keywords": [
+    "stableops",
+    "mcp",
+    "modelcontextprotocol",
+    "agent",
+    "stablecoin",
+    "usdc",
+    "usdt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StableOps/stableops-mcp-server.git"
+  },
+  "homepage": "https://stableops.dev",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "stableops-mcp": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@stableops/api-sdk": "workspace:^",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@stableops/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
