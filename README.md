@@ -50,9 +50,29 @@ export STABLEOPS_AGENT_SESSION_ID=session_123
 npx stableops-mcp
 ```
 
-### Claude Desktop
+### Claude Code
 
-Add to your `claude_desktop_config.json`:
+Add to your `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "stableops": {
+      "command": "stableops-mcp",
+      "env": {
+        "STABLEOPS_API_KEY": "sk_...",
+        "STABLEOPS_ORG_SLUG": "demo",
+        "STABLEOPS_ENVIRONMENT": "sandbox",
+        "STABLEOPS_AGENT_SESSION_ID": "session_123"
+      }
+    }
+  }
+}
+```
+
+### Codex CLI
+
+Add to your `~/.codex/config.json`:
 
 ```json
 {
