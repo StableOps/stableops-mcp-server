@@ -43,7 +43,6 @@ const AUTO_ALLOW: Record<string, () => unknown> = {
 const WIRE_ORDER = {
   id: 'ord-1',
   merchant_order_id: 'm-1',
-  scenario: 'generic',
   amount: '100.00',
   settlement_asset: 'USDC',
   status: 'created',

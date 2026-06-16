@@ -61,7 +61,6 @@ const COMMON_LIST_INPUT = {
 const PAYMENT_ORDER_OUTPUT = {
   id: z.string(),
   merchantOrderId: z.string(),
-  scenario: z.string(),
   amount: z.string(),
   settlementAsset: z.string(),
   status: z.string(),
@@ -229,14 +228,6 @@ export function createAgentToolkitServer(
             z.object({ chain: ChainIdSchema, asset: AssetSchema }),
           )
           .min(1),
-        scenario: z
-          .enum([
-            'saas_subscription',
-            'trading_deposit',
-            'agent_workflow',
-            'generic',
-          ])
-          .optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
       },
       outputSchema: PAYMENT_ORDER_OUTPUT,
@@ -254,7 +245,6 @@ export function createAgentToolkitServer(
             amount: args.amount,
             settlementAsset: args.settlement_asset,
             acceptedAssets: args.accepted_assets,
-            scenario: args.scenario,
             metadata: args.metadata,
           },
           { idempotencyKey: result.actionId },
