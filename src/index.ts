@@ -62,7 +62,7 @@ const PAYMENT_ORDER_OUTPUT = {
   id: z.string(),
   merchantOrderId: z.string(),
   amount: z.string(),
-  settlementAsset: z.string(),
+  settlementAsset: z.string().optional(),
   status: z.string(),
   expiresAt: z.string().nullable(),
   metadata: z.unknown(),
@@ -222,7 +222,6 @@ export function createAgentToolkitServer(
       inputSchema: {
         merchant_order_id: z.string().min(1).max(128),
         amount: z.string(),
-        settlement_asset: AssetSchema,
         accepted_assets: z
           .array(
             z.object({ chain: ChainIdSchema, asset: AssetSchema }),
@@ -243,7 +242,6 @@ export function createAgentToolkitServer(
           {
             merchantOrderId: args.merchant_order_id,
             amount: args.amount,
-            settlementAsset: args.settlement_asset,
             acceptedAssets: args.accepted_assets,
             metadata: args.metadata,
           },

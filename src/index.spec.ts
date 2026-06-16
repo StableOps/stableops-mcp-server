@@ -125,7 +125,6 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
       arguments: {
         merchant_order_id: 'm-1',
         amount: '100.00',
-        settlement_asset: 'USDC',
         accepted_assets: [{ chain: 'base', asset: 'USDC' }],
       },
     })
@@ -146,7 +145,6 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
       arguments: {
         merchant_order_id: 'm-2',
         amount: '1',
-        settlement_asset: 'USDC',
         accepted_assets: [{ chain: 'base', asset: 'USDC' }],
       },
     })
@@ -232,7 +230,6 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
       arguments: {
         merchant_order_id: 'm-sol',
         amount: '1',
-        settlement_asset: 'USDC',
         accepted_assets: [{ chain: 'solana', asset: 'USDC' }],
       },
     })
