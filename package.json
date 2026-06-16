@@ -1,6 +1,6 @@
 {
   "name": "@stableops/mcp-server",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "license": "Apache-2.0",
   "description": "Stdio MCP server that exposes the StableOps SDK as policy-scoped tools for AI agents.",
@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@stableops/api-sdk": "^0.2.0",
+    "@stableops/api-sdk": "workspace:^",
     "zod": "4.4.3"
   },
   "devDependencies": {
