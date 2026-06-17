@@ -2,8 +2,8 @@
 import { runStdio } from './index'
 
 // stdio MCP server 主入口。配置从 env 读取：
-//   STABLEOPS_API_URL, STABLEOPS_API_KEY,
-//   STABLEOPS_ENVIRONMENT, STABLEOPS_AGENT_SESSION_ID
+//   STABLEOPS_API_URL, STABLEOPS_API_KEY, STABLEOPS_AGENT_SESSION_ID
+// 环境（sandbox / live）由 API Key 自身决定，无需单独配置。
 //
 // 与 Claude Desktop 或其它 MCP host 集成时：
 //   { "command": "stableops-mcp", "env": { ... } }
@@ -17,8 +17,6 @@ if (!sessionId) {
 runStdio({
   apiKey: process.env.STABLEOPS_API_KEY,
   baseUrl: process.env.STABLEOPS_API_URL,
-  environment:
-    (process.env.STABLEOPS_ENVIRONMENT as 'sandbox' | 'live' | undefined) ?? 'sandbox',
   agentSessionId: sessionId,
 }).catch((err: unknown) => {
   process.stderr.write(`${String(err)}\n`)
