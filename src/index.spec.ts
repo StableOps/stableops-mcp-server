@@ -24,7 +24,6 @@ async function connect(routes: Record<string, () => unknown>) {
   const server = createAgentToolkitServer({
     agentSessionId: 'sess-1',
     baseUrl: 'http://api.test.local',
-    organizationSlug: 'demo',
     environment: 'sandbox',
     fetch: fakeFetch(routes),
   })

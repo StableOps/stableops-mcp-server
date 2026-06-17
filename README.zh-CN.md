@@ -97,7 +97,6 @@ import { createAgentToolkitServer } from '@stableops/mcp-server'
 
 const server = createAgentToolkitServer({
   apiKey: process.env.STABLEOPS_API_KEY!,
-  organizationSlug: 'demo',
   environment: 'sandbox',
   agentSessionId: 'session_123',
 })

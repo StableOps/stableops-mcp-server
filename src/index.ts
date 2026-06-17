@@ -121,7 +121,6 @@ export function createAgentToolkitServer(
   const client = new StableOps({
     apiKey: options.apiKey,
     baseUrl: options.baseUrl,
-    organizationSlug: options.organizationSlug,
     environment: options.environment,
     fetch: options.fetch,
   })
@@ -342,7 +341,6 @@ async function fetchJson<T>(
       'content-type': 'application/json',
       accept: 'application/json',
       ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
-      'x-stableops-org': options.organizationSlug ?? 'demo',
       'x-stableops-env': options.environment ?? 'sandbox',
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
