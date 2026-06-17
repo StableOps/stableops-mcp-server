@@ -1,6 +1,6 @@
 {
   "name": "@stableops/mcp-server",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": false,
   "license": "Apache-2.0",
   "description": "Stdio MCP server that exposes the StableOps SDK as policy-scoped tools for AI agents.",
