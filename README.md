@@ -43,7 +43,6 @@ yarn add @stableops/mcp-server
 
 ```bash
 export STABLEOPS_API_KEY=sk_...
-export STABLEOPS_ORG_SLUG=demo
 export STABLEOPS_ENVIRONMENT=sandbox
 export STABLEOPS_AGENT_SESSION_ID=session_123
 
@@ -61,7 +60,6 @@ Add to your `~/.claude/settings.json`:
       "command": "stableops-mcp",
       "env": {
         "STABLEOPS_API_KEY": "sk_...",
-        "STABLEOPS_ORG_SLUG": "demo",
         "STABLEOPS_ENVIRONMENT": "sandbox",
         "STABLEOPS_AGENT_SESSION_ID": "session_123"
       }
@@ -81,7 +79,6 @@ Add to your `~/.codex/config.json`:
       "command": "stableops-mcp",
       "env": {
         "STABLEOPS_API_KEY": "sk_...",
-        "STABLEOPS_ORG_SLUG": "demo",
         "STABLEOPS_ENVIRONMENT": "sandbox",
         "STABLEOPS_AGENT_SESSION_ID": "session_123"
       }
@@ -120,7 +117,6 @@ const server = createAgentToolkitServer({
 | `STABLEOPS_API_KEY` | Yes | StableOps API key |
 | `STABLEOPS_AGENT_SESSION_ID` | Yes | Unique session identifier (from dashboard) |
 | `STABLEOPS_API_URL` | No | Custom API base URL (default: `http://localhost:3001`) |
-| `STABLEOPS_ORG_SLUG` | No | Organization slug (default: `demo`) |
 | `STABLEOPS_ENVIRONMENT` | No | `sandbox` or `live` (default: `sandbox`) |
 
 ## Documentation

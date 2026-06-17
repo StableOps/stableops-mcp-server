@@ -43,7 +43,6 @@ yarn add @stableops/mcp-server
 
 ```bash
 export STABLEOPS_API_KEY=sk_...
-export STABLEOPS_ORG_SLUG=demo
 export STABLEOPS_ENVIRONMENT=sandbox
 export STABLEOPS_AGENT_SESSION_ID=session_123
 
@@ -61,7 +60,6 @@ npx stableops-mcp
       "command": "stableops-mcp",
       "env": {
         "STABLEOPS_API_KEY": "sk_...",
-        "STABLEOPS_ORG_SLUG": "demo",
         "STABLEOPS_ENVIRONMENT": "sandbox",
         "STABLEOPS_AGENT_SESSION_ID": "session_123"
       }
@@ -81,7 +79,6 @@ npx stableops-mcp
       "command": "stableops-mcp",
       "env": {
         "STABLEOPS_API_KEY": "sk_...",
-        "STABLEOPS_ORG_SLUG": "demo",
         "STABLEOPS_ENVIRONMENT": "sandbox",
         "STABLEOPS_AGENT_SESSION_ID": "session_123"
       }
@@ -120,7 +117,6 @@ const server = createAgentToolkitServer({
 | `STABLEOPS_API_KEY` | 是 | StableOps API 密钥 |
 | `STABLEOPS_AGENT_SESSION_ID` | 是 | 唯一会话标识（从 Dashboard 获取） |
 | `STABLEOPS_API_URL` | 否 | 自定义 API 地址（默认 `http://localhost:3001`） |
-| `STABLEOPS_ORG_SLUG` | 否 | 组织标识（默认 `demo`） |
 | `STABLEOPS_ENVIRONMENT` | 否 | `sandbox` 或 `live`（默认 `sandbox`） |
 
 ## 官方文档
