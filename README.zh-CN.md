@@ -94,7 +94,6 @@ import { createAgentToolkitServer } from '@stableops/mcp-server'
 
 const server = createAgentToolkitServer({
   apiKey: process.env.STABLEOPS_API_KEY!,
-  environment: 'sandbox',
   agentSessionId: 'session_123',
 })
 // 通过 MCP SDK 连接传输层（stdio、SSE 等）
@@ -102,22 +101,22 @@ const server = createAgentToolkitServer({
 
 ## 可用工具
 
-| 工具 | 描述 | 权限 |
-|---|---|---|
-| `get_order` | 按 ID 查询单个付款单 | 只读（自动放行） |
-| `list_events` | 查询标准化的链上转账事件 | 只读（自动放行） |
-| `list_webhook_deliveries` | 查看最近的 Webhook 投递记录 | 只读（自动放行） |
-| `create_payment_order` | 创建新的付款单 | 策略控制（可能需要审批） |
-| `request_action_approval` | 注册自定义操作等待人工确认 | 始终需要审批 |
+| 工具                      | 描述                        | 权限                     |
+| ------------------------- | --------------------------- | ------------------------ |
+| `get_order`               | 按 ID 查询单个付款单        | 只读（自动放行）         |
+| `list_events`             | 查询标准化的链上转账事件    | 只读（自动放行）         |
+| `list_webhook_deliveries` | 查看最近的 Webhook 投递记录 | 只读（自动放行）         |
+| `create_payment_order`    | 创建新的付款单              | 策略控制（可能需要审批） |
+| `request_action_approval` | 注册自定义操作等待人工确认  | 始终需要审批             |
 
 ## 环境变量
 
-| 变量 | 必填 | 说明 |
-|---|---|---|
-| `STABLEOPS_API_KEY` | 是 | StableOps API 密钥 |
-| `STABLEOPS_AGENT_SESSION_ID` | 是 | 唯一会话标识（从 Dashboard 获取） |
-| `STABLEOPS_API_URL` | 否 | 自定义 API 地址（默认 `http://localhost:3001`） |
-| `STABLEOPS_ENVIRONMENT` | 否 | `sandbox` 或 `live`（默认 `sandbox`） |
+| 变量                         | 必填 | 说明                                            |
+| ---------------------------- | ---- | ----------------------------------------------- |
+| `STABLEOPS_API_KEY`          | 是   | StableOps API 密钥                              |
+| `STABLEOPS_AGENT_SESSION_ID` | 是   | 唯一会话标识（从 Dashboard 获取）               |
+| `STABLEOPS_API_URL`          | 否   | 自定义 API 地址（默认 `http://localhost:3001`） |
+| `STABLEOPS_ENVIRONMENT`      | 否   | `sandbox` 或 `live`（默认 `sandbox`）           |
 
 ## 官方文档
 

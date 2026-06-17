@@ -94,7 +94,6 @@ import { createAgentToolkitServer } from '@stableops/mcp-server'
 
 const server = createAgentToolkitServer({
   apiKey: process.env.STABLEOPS_API_KEY!,
-  environment: 'sandbox',
   agentSessionId: 'session_123',
 })
 // Connect to a transport (stdio, SSE, etc.) via the MCP SDK
@@ -102,22 +101,22 @@ const server = createAgentToolkitServer({
 
 ## Available Tools
 
-| Tool | Description | Access |
-|---|---|---|
-| `get_order` | Look up a single payment order by ID | Read-only (auto-allowed) |
-| `list_events` | Query normalized on-chain transfer events | Read-only (auto-allowed) |
-| `list_webhook_deliveries` | Read recent webhook delivery history | Read-only (auto-allowed) |
-| `create_payment_order` | Create a new payment order | Policy-gated (may require approval) |
-| `request_action_approval` | Register a custom action for human sign-off | Always requires approval |
+| Tool                      | Description                                 | Access                              |
+| ------------------------- | ------------------------------------------- | ----------------------------------- |
+| `get_order`               | Look up a single payment order by ID        | Read-only (auto-allowed)            |
+| `list_events`             | Query normalized on-chain transfer events   | Read-only (auto-allowed)            |
+| `list_webhook_deliveries` | Read recent webhook delivery history        | Read-only (auto-allowed)            |
+| `create_payment_order`    | Create a new payment order                  | Policy-gated (may require approval) |
+| `request_action_approval` | Register a custom action for human sign-off | Always requires approval            |
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `STABLEOPS_API_KEY` | Yes | StableOps API key |
-| `STABLEOPS_AGENT_SESSION_ID` | Yes | Unique session identifier (from dashboard) |
-| `STABLEOPS_API_URL` | No | Custom API base URL (default: `http://localhost:3001`) |
-| `STABLEOPS_ENVIRONMENT` | No | `sandbox` or `live` (default: `sandbox`) |
+| Variable                     | Required | Description                                            |
+| ---------------------------- | -------- | ------------------------------------------------------ |
+| `STABLEOPS_API_KEY`          | Yes      | StableOps API key                                      |
+| `STABLEOPS_AGENT_SESSION_ID` | Yes      | Unique session identifier (from dashboard)             |
+| `STABLEOPS_API_URL`          | No       | Custom API base URL (default: `http://localhost:3001`) |
+| `STABLEOPS_ENVIRONMENT`      | No       | `sandbox` or `live` (default: `sandbox`)               |
 
 ## Documentation
 
