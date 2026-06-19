@@ -6,13 +6,13 @@ Stdio MCP server that exposes the StableOps SDK as policy-scoped tools for AI ag
 
 This server runs as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio server, giving AI agents (Claude Desktop, Cursor, VS Code, etc.) access to StableOps payment operations through a controlled tool interface.
 
-Operations are gated by workspace policy — read tools (query orders, events, webhook deliveries) are typically auto-allowed, while write tools (create payment orders) require human approval from the StableOps dashboard.
+Operations are gated by workspace policy. Read tools (query orders, events, webhook deliveries) are typically auto-allowed, while write tools (create payment orders) require human approval from the StableOps dashboard.
 
 ## Features
 
-- **Read tools**: `get_order`, `list_events`, `list_webhook_deliveries` — query StableOps data without side effects.
-- **Write tools**: `create_payment_order` — policy-gated, requires human approval per workspace configuration.
-- **Approval tool**: `request_action_approval` — register a custom action in the approval queue for manual sign-off.
+- **Read tools**: `get_order`, `list_events`, `list_webhook_deliveries`. Query StableOps data without side effects.
+- **Write tools**: `create_payment_order`. Policy-gated, requires human approval per workspace configuration.
+- **Approval tool**: `request_action_approval`. Register a custom action in the approval queue for manual sign-off.
 - **Policy enforcement**: every tool call is checked against the workspace action policy before execution.
 - **Idempotent writes**: payment order creation uses the action ID as idempotency key to prevent duplicates.
 - **Audit trail**: all tool executions are recorded in the workspace audit log.

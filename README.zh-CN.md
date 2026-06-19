@@ -6,13 +6,13 @@
 
 本服务是一个 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio 服务，让 AI Agent（Claude Desktop、Cursor、VS Code 等）通过受控的工具接口访问 StableOps 支付操作。
 
-所有操作都受工作区策略管控——只读工具（查询订单、事件、Webhook 投递）通常自动放行，写工具（创建付款单）需要经过 StableOps Dashboard 的人工审批。
+所有操作都受工作区策略管控。只读工具（查询订单、事件、Webhook 投递）通常自动放行，写工具（创建付款单）需要经过 StableOps Dashboard 的人工审批。
 
 ## 功能
 
-- **只读工具**：`get_order`、`list_events`、`list_webhook_deliveries`——查询 StableOps 数据，没有副作用。
-- **写工具**：`create_payment_order`——受策略控制，根据工作区配置可能需要人工审批。
-- **审批工具**：`request_action_approval`——在审批队列注册自定义操作，等待人工确认。
+- **只读工具**：`get_order`、`list_events`、`list_webhook_deliveries`。查询 StableOps 数据，没有副作用。
+- **写工具**：`create_payment_order`。受策略控制，根据工作区配置可能需要人工审批。
+- **审批工具**：`request_action_approval`。在审批队列注册自定义操作，等待人工确认。
 - **策略执行**：每次工具调用在执行前都会经过工作区 action policy 检查。
 - **幂等写操作**：付款单创建使用 action ID 作为幂等键，防止重复。
 - **审计日志**：所有工具执行记录都会写入工作区审计日志。
