@@ -225,6 +225,7 @@ export function createAgentToolkitServer(
             z.object({ chain: ChainIdSchema, asset: AssetSchema }),
           )
           .min(1),
+        expires_at: z.string(),
         metadata: z.record(z.string(), z.unknown()).optional(),
       },
       outputSchema: PAYMENT_ORDER_OUTPUT,
@@ -241,6 +242,7 @@ export function createAgentToolkitServer(
             merchantOrderId: args.merchant_order_id,
             amount: args.amount,
             acceptedAssets: args.accepted_assets,
+            expiresAt: args.expires_at,
             metadata: args.metadata,
           },
           { idempotencyKey: result.actionId },

@@ -124,6 +124,7 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
         merchant_order_id: 'm-1',
         amount: '100.00',
         accepted_assets: [{ chain: 'base', asset: 'USDC' }],
+        expires_at: '2026-12-31T00:00:00.000Z',
       },
     })
     expect(res.isError).toBeFalsy()
@@ -144,6 +145,7 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
         merchant_order_id: 'm-2',
         amount: '1',
         accepted_assets: [{ chain: 'base', asset: 'USDC' }],
+        expires_at: '2026-12-31T00:00:00.000Z',
       },
     })
     expect(res.isError).toBe(true)
@@ -229,6 +231,7 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
         merchant_order_id: 'm-sol',
         amount: '1',
         accepted_assets: [{ chain: 'solana', asset: 'USDC' }],
+        expires_at: '2026-12-31T00:00:00.000Z',
       },
     })
     expect(res.isError).toBeFalsy()
