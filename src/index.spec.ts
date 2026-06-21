@@ -56,21 +56,6 @@ const WIRE_ORDER_DETAIL = {
   timeline: [{ from: null, to: 'created', reason: null, at: '2026-05-31T00:00:00.000Z' }],
 }
 
-const WIRE_EVENT = {
-  id: 'ne-1',
-  chain: 'base',
-  asset: 'USDC',
-  from_address: '0xfrom',
-  to_address: '0xto',
-  amount: '100.00',
-  tx_hash: '0xhash',
-  log_index: 0,
-  block_number: '1234',
-  payment_order_id: 'ord-1',
-  confirmations: 3,
-  detected_at: '2026-05-31T00:00:00.000Z',
-}
-
 describe('agent toolkit — outputSchema / structuredContent', () => {
   let close: (() => Promise<void>) | undefined
   afterEach(async () => {
@@ -92,21 +77,6 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     const structured = res.structuredContent as Record<string, unknown>
     expect(structured).toMatchObject({ id: 'ord-1', status: 'created', settlementAsset: 'USDC' })
     expect(Array.isArray(structured.timeline)).toBe(true)
-  })
-
-  it('list_events：返回 { items: [...] } 结构化（camelCase）', async () => {
-    const { client, server } = await connect({
-      ...AUTO_ALLOW,
-      'GET /v1/events': () => ({ items: [WIRE_EVENT] }),
-    })
-    close = async () => {
-      await client.close()
-      await server.close()
-    }
-    const res = await client.callTool({ name: AgentToolName.LIST_EVENTS, arguments: {} })
-    expect(res.isError).toBeFalsy()
-    const items = (res.structuredContent as { items: Record<string, unknown>[] }).items
-    expect(items[0]).toMatchObject({ id: 'ne-1', toAddress: '0xto', confirmations: 3 })
   })
 
   it('create_payment_order：自动放行时返回结构化订单', async () => {

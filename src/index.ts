@@ -11,7 +11,6 @@ import { z } from 'zod'
 // （mcp-server 是对外发布产物，必须独立可装）。如果上游枚举扩充，请同步更新这里。
 export const AgentToolName = {
   GET_ORDER: 'get_order',
-  LIST_EVENTS: 'list_events',
   LIST_WEBHOOK_DELIVERIES: 'list_webhook_deliveries',
   CREATE_PAYMENT_ORDER: 'create_payment_order',
   REQUEST_ACTION_APPROVAL: 'request_action_approval',
@@ -37,7 +36,7 @@ const ChainIdSchema = z.enum([
 const AssetSchema = z.enum(['USDC', 'USDT'])
 
 // 把 SDK 的资源 API 暴露成 MCP 工具。规则：
-//   - 只读工具（get_order / list_events / list_webhook_deliveries）默认可用。
+//   - 只读工具（get_order / list_webhook_deliveries）默认可用。
 //   - 写工具（create_payment_order）调用前先打 /v1/agent/actions 请求授权；
 //     若 policy 要求人工审批，则返回 pending_approval，agent 必须等待。
 //   - request_action_approval 也走同一接口，提供给 agent 主动登记敏感动作。
@@ -80,21 +79,6 @@ const TIMELINE_ENTRY_OUTPUT = z.object({
   to: z.string(),
   reason: z.string().nullable(),
   at: z.string(),
-})
-
-const NORMALIZED_EVENT_OUTPUT = z.object({
-  id: z.string(),
-  chain: z.string(),
-  asset: z.string(),
-  fromAddress: z.string(),
-  toAddress: z.string(),
-  amount: z.string(),
-  txHash: z.string(),
-  logIndex: z.number(),
-  blockNumber: z.string(),
-  paymentOrderId: z.string().nullable(),
-  confirmations: z.number(),
-  detectedAt: z.string(),
 })
 
 const WEBHOOK_DELIVERY_OUTPUT = z.object({
@@ -154,40 +138,6 @@ export function createAgentToolkitServer(
   )
 
   server.registerTool(
-    AgentToolName.LIST_EVENTS,
-    {
-      title: 'List on-chain events',
-      description: 'Query the normalized event log (read-only).',
-      inputSchema: {
-        chain: ChainIdSchema.optional(),
-        asset: AssetSchema.optional(),
-        payment_order_id: z.string().optional(),
-        ...COMMON_LIST_INPUT,
-      },
-      outputSchema: { items: z.array(NORMALIZED_EVENT_OUTPUT) },
-    },
-    async (args) => {
-      const result = await requestAction(options, {
-        tool: AgentToolName.LIST_EVENTS,
-        input: args,
-      })
-      if (result.decision !== 'auto_allowed') return blockedResponse(result)
-      try {
-        const events = await client.events.list({
-          chain: args.chain,
-          asset: args.asset,
-          paymentOrderId: args.payment_order_id,
-          limit: args.limit,
-        })
-        await markExecuted(options, result.actionId, { count: events.length })
-        return ok({ items: events })
-      } catch (err) {
-        return errorFromException(err)
-      }
-    },
-  )
-
-  server.registerTool(
     AgentToolName.LIST_WEBHOOK_DELIVERIES,
     {
       title: 'List webhook deliveries',
@@ -202,7 +152,7 @@ export function createAgentToolkitServer(
       })
       if (result.decision !== 'auto_allowed') return blockedResponse(result)
       try {
-        const items = await client.webhookDeliveries.list({ limit: args.limit })
+        const items = await client.webhooks.listDeliveries({ limit: args.limit })
         await markExecuted(options, result.actionId, { count: items.length })
         return ok({ items })
       } catch (err) {

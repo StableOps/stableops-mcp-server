@@ -10,7 +10,7 @@
 
 ## 功能
 
-- **只读工具**：`get_order`、`list_events`、`list_webhook_deliveries`。查询 StableOps 数据，没有副作用。
+- **只读工具**：`get_order`、`list_webhook_deliveries`。查询 StableOps 数据，没有副作用。
 - **写工具**：`create_payment_order`。受策略控制，根据工作区配置可能需要人工审批。
 - **审批工具**：`request_action_approval`。在审批队列注册自定义操作，等待人工确认。
 - **策略执行**：每次工具调用在执行前都会经过工作区 action policy 检查。
@@ -104,7 +104,6 @@ const server = createAgentToolkitServer({
 | 工具                      | 描述                        | 权限                     |
 | ------------------------- | --------------------------- | ------------------------ |
 | `get_order`               | 按 ID 查询单个付款单        | 只读（自动放行）         |
-| `list_events`             | 查询标准化的链上转账事件    | 只读（自动放行）         |
 | `list_webhook_deliveries` | 查看最近的 Webhook 投递记录 | 只读（自动放行）         |
 | `create_payment_order`    | 创建新的付款单              | 策略控制（可能需要审批） |
 | `request_action_approval` | 注册自定义操作等待人工确认  | 始终需要审批             |

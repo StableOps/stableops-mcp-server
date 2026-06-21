@@ -10,7 +10,7 @@ Operations are gated by workspace policy. Read tools (query orders, events, webh
 
 ## Features
 
-- **Read tools**: `get_order`, `list_events`, `list_webhook_deliveries`. Query StableOps data without side effects.
+- **Read tools**: `get_order`, `list_webhook_deliveries`. Query StableOps data without side effects.
 - **Write tools**: `create_payment_order`. Policy-gated, requires human approval per workspace configuration.
 - **Approval tool**: `request_action_approval`. Register a custom action in the approval queue for manual sign-off.
 - **Policy enforcement**: every tool call is checked against the workspace action policy before execution.
@@ -104,7 +104,6 @@ const server = createAgentToolkitServer({
 | Tool                      | Description                                 | Access                              |
 | ------------------------- | ------------------------------------------- | ----------------------------------- |
 | `get_order`               | Look up a single payment order by ID        | Read-only (auto-allowed)            |
-| `list_events`             | Query normalized on-chain transfer events   | Read-only (auto-allowed)            |
 | `list_webhook_deliveries` | Read recent webhook delivery history        | Read-only (auto-allowed)            |
 | `create_payment_order`    | Create a new payment order                  | Policy-gated (may require approval) |
 | `request_action_approval` | Register a custom action for human sign-off | Always requires approval            |
