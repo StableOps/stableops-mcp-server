@@ -135,7 +135,10 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
       arguments: { summary: 'wire 5000 USDC to treasury' },
     })
     expect(res.isError).toBeFalsy()
-    expect(res.structuredContent).toMatchObject({ action_id: 'act-3', decision: 'pending_approval' })
+    expect(res.structuredContent).toMatchObject({
+      action_id: 'act-3',
+      decision: 'pending_approval',
+    })
   })
 
   it('list_webhook_deliveries：经 SDK 返回 camelCase 字段', async () => {

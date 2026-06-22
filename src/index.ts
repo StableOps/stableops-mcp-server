@@ -1,10 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import {
-  StableOps,
-  StableOpsError,
-  type ClientOptions,
-} from '@stableops/api-sdk'
+import { StableOps, StableOpsError, type ClientOptions } from '@stableops/api-sdk'
 import { z } from 'zod'
 
 // 工具名 / 链 / 资产枚举内联在此，避免对内部 workspace 包 @stableops/shared 的依赖
@@ -66,9 +62,7 @@ const PAYMENT_ORDER_OUTPUT = {
   expiresAt: z.string().nullable(),
   metadata: z.unknown(),
   createdAt: z.string(),
-  acceptedAssets: z
-    .array(z.object({ chain: z.string(), asset: z.string() }))
-    .optional(),
+  acceptedAssets: z.array(z.object({ chain: z.string(), asset: z.string() })).optional(),
   paymentInstructions: z.array(
     z.object({ chain: z.string(), asset: z.string(), address: z.string() }),
   ),
@@ -99,9 +93,7 @@ const WEBHOOK_DELIVERY_OUTPUT = z.object({
   createdAt: z.string(),
 })
 
-export function createAgentToolkitServer(
-  options: AgentToolkitOptions,
-): McpServer {
+export function createAgentToolkitServer(options: AgentToolkitOptions): McpServer {
   const client = new StableOps({
     apiKey: options.apiKey,
     baseUrl: options.baseUrl,
@@ -170,11 +162,7 @@ export function createAgentToolkitServer(
       inputSchema: {
         merchant_order_id: z.string().min(1).max(128),
         amount: z.string(),
-        accepted_assets: z
-          .array(
-            z.object({ chain: ChainIdSchema, asset: AssetSchema }),
-          )
-          .min(1),
+        accepted_assets: z.array(z.object({ chain: ChainIdSchema, asset: AssetSchema })).min(1),
         expires_at: z.string(),
         metadata: z.record(z.string(), z.unknown()).optional(),
       },
@@ -261,11 +249,7 @@ async function requestAction(
   })
 }
 
-async function markExecuted(
-  options: AgentToolkitOptions,
-  actionId: string,
-  result: unknown,
-) {
+async function markExecuted(options: AgentToolkitOptions, actionId: string, result: unknown) {
   try {
     await fetchJson(options, {
       method: 'POST',
@@ -281,10 +265,7 @@ async function fetchJson<T>(
   options: AgentToolkitOptions,
   init: { method?: 'GET' | 'POST'; path: string; body?: unknown },
 ): Promise<T> {
-  const baseUrl = (options.baseUrl ?? 'https://api.stableops.dev').replace(
-    /\/+$/u,
-    '',
-  )
+  const baseUrl = (options.baseUrl ?? 'https://api.stableops.dev').replace(/\/+$/u, '')
   const fetchImpl = options.fetch ?? fetch
   const res = await fetchImpl(`${baseUrl}${init.path}`, {
     method: init.method ?? 'GET',
@@ -362,9 +343,7 @@ function errorFromException(err: unknown) {
   }
   return {
     isError: true,
-    content: [
-      { type: 'text' as const, text: JSON.stringify({ message: String(err) }) },
-    ],
+    content: [{ type: 'text' as const, text: JSON.stringify({ message: String(err) }) }],
   }
 }
 
