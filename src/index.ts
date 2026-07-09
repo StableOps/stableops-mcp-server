@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StableOps } from '@stableops/api-sdk'
@@ -17,6 +20,10 @@ import {
   type AgentToolkitOptions,
 } from './toolkit'
 
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '../package.json'), 'utf8'),
+) as { version: string }
+
 export { AgentToolName } from './tool-names'
 export type { AgentToolName as AgentToolNameValue } from './tool-names'
 export type { AgentToolkitOptions } from './toolkit'
@@ -30,7 +37,7 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
     fetch: options.fetch,
   })
 
-  const server = new McpServer({ name: 'stableops', version: '0.1.0' })
+  const server = new McpServer({ name: 'stableops', version: packageJson.version })
 
   registerPaymentOrderTools(server, client, options)
   registerCheckoutSessionTools(server, client, options)

@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import packageJson from '../package.json'
 import { AgentToolName, createAgentToolkitServer } from './index'
 
 type FakeRequest = {
@@ -59,6 +60,18 @@ async function connect(routes: Record<string, FakeRoute>) {
   return { client, server }
 }
 
+async function listToolSchema(client: Client, name: AgentToolName) {
+  const res = await client.listTools()
+  const tool = res.tools.find((item) => item.name === name)
+  expect(tool).toBeDefined()
+  return tool as {
+    outputSchema?: {
+      properties?: Record<string, unknown>
+      required?: string[]
+    }
+  }
+}
+
 // (org, env) 作用域的授权放行 + 执行回执存根。
 const AUTO_ALLOW: Record<string, () => unknown> = {
   'POST /v1/agent/actions': () => ({ decision: 'auto_allowed', actionId: 'act-1' }),
@@ -69,6 +82,7 @@ const WIRE_ORDER = {
   id: 'ord-1',
   merchant_order_id: 'm-1',
   amount: '100.00',
+  requested_amount: '100.00',
   settlement_asset: 'USDC',
   status: 'created',
   expires_at: null,
@@ -83,7 +97,7 @@ const WIRE_ORDER_DETAIL = {
   timeline: [{ from: null, to: 'created', reason: null, at: '2026-05-31T00:00:00.000Z' }],
 }
 
-describe('agent toolkit — outputSchema / structuredContent', () => {
+describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000 }, () => {
   let close: (() => Promise<void>) | undefined
   afterEach(async () => {
     await close?.()
@@ -106,6 +120,44 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     expect(names).not.toContain('approve_agent_action')
     expect(names).not.toContain('reject_agent_action')
     expect(names).not.toContain('revoke_agent_session')
+  })
+
+  it('initialize：serverInfo version 与 package.json version 保持一致', async () => {
+    const { client, server } = await connect({})
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    expect(client.getServerVersion()).toMatchObject({
+      name: 'stableops',
+      version: packageJson.version,
+    })
+  })
+
+  it('create_payment_order：outputSchema 将 requestedAmount 声明为必填', async () => {
+    const { client, server } = await connect({})
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const tool = await listToolSchema(client, AgentToolName.CREATE_PAYMENT_ORDER)
+    expect(tool.outputSchema?.required).toContain('requestedAmount')
+  })
+
+  it('list_webhook_deliveries：outputSchema 声明 payload 字段', async () => {
+    const { client, server } = await connect({})
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const tool = await listToolSchema(client, AgentToolName.LIST_WEBHOOK_DELIVERIES)
+    const itemsSchema = tool.outputSchema?.properties?.items as
+      | { items?: { properties?: Record<string, unknown> } }
+      | undefined
+    expect(itemsSchema?.items?.properties).toHaveProperty('payload')
   })
 
   it('get_order：返回 structuredContent 且通过 outputSchema 校验', async () => {
@@ -207,6 +259,7 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
             succeeded_at: '2026-05-31T00:00:00.000Z',
             dead_lettered_at: null,
             created_at: '2026-05-31T00:00:00.000Z',
+            payload: { type: 'payment.confirmed', data: { payment_order_id: 'ord-1' } },
           },
         ],
       }),

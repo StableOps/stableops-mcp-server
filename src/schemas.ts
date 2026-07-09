@@ -31,7 +31,7 @@ export const PAYMENT_ORDER_OUTPUT = {
   id: z.string(),
   merchantOrderId: z.string(),
   amount: z.string(),
-  requestedAmount: z.string().optional(),
+  requestedAmount: z.string(),
   settlementAsset: z.string().optional(),
   status: z.string(),
   expiresAt: z.string().nullable(),
@@ -66,6 +66,7 @@ export const WEBHOOK_DELIVERY_OUTPUT = z.object({
   succeededAt: z.string().nullable(),
   deadLetteredAt: z.string().nullable(),
   createdAt: z.string(),
+  payload: z.record(z.string(), z.unknown()),
 })
 
 export const AGENT_POLICY_OUTPUT = {
