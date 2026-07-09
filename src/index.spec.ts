@@ -507,8 +507,6 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
       'GET /v1/agent/policy': () => ({
         id: 'default',
         allowed_tools: ['get_order'],
-        per_action_limit: null,
-        daily_limit: null,
         require_approval: true,
         created_at: '1970-01-01T00:00:00.000Z',
         updated_at: '1970-01-01T00:00:00.000Z',

@@ -104,7 +104,7 @@ const server = createAgentToolkitServer({
 
 ## Available Tools
 
-Tools are grouped by resource family. All tools call `/v1/agent/actions` before execution; read-only tools are usually auto-allowed, and write tools are controlled by `allowed_tools`, `require_approval`, and amount limits where applicable.
+Tools are grouped by resource family. All tools call `/v1/agent/actions` before execution; read-only tools are usually auto-allowed, and write tools are controlled by `allowed_tools` and `require_approval`.
 
 | Family | Tools |
 | ------ | ----- |

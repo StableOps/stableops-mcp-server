@@ -104,7 +104,7 @@ const server = createAgentToolkitServer({
 
 ## 可用工具
 
-工具按资源族分组。所有工具都会先调用 `/v1/agent/actions`；只读工具通常自动放行，写工具受 `allowed_tools`、`require_approval` 和适用的金额上限控制。
+工具按资源族分组。所有工具都会先调用 `/v1/agent/actions`；只读工具通常自动放行，写工具受 `allowed_tools` 和 `require_approval` 控制。
 
 | 资源族 | 工具 |
 | ------ | ---- |

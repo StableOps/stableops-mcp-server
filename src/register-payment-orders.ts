@@ -58,8 +58,7 @@ export function registerPaymentOrderTools(
     AgentToolName.CREATE_PAYMENT_ORDER,
     {
       title: 'Create a payment order',
-      description:
-        'Open a new payment order. Subject to per_action_limit / daily_limit / approval gating in the workspace policy.',
+      description: 'Open a new payment order. Subject to approval gating in the workspace policy.',
       inputSchema: {
         merchant_order_id: z.string().min(1).max(128),
         amount: z.string(),

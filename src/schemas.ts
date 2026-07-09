@@ -71,8 +71,6 @@ export const WEBHOOK_DELIVERY_OUTPUT = z.object({
 export const AGENT_POLICY_OUTPUT = {
   id: z.string(),
   allowed_tools: z.array(z.string()),
-  per_action_limit: z.string().nullable(),
-  daily_limit: z.string().nullable(),
   require_approval: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
