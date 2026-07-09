@@ -1,4 +1,6 @@
-// MCP server 是对外发布产物，工具名在本包内维护，避免依赖内部 workspace 包 @stableops/shared。
+// MCP server 是对外发布产物，工具名全集在本包内维护，避免依赖内部 workspace 包 @stableops/shared。
+// 这里定义的是 StableOps Agent policy/action 可识别的工具名全集，用于稳定审计与白名单语义；
+// 它不等同于当前 server 已注册、可被调用的 MCP 工具列表。实际可调用工具以 MCP listTools() 为准。
 // 如果上游 AgentToolName 扩充，请同步更新这里。
 export const AgentToolName = {
   GET_ORDER: 'get_order',

@@ -26,15 +26,6 @@ export { AgentToolName } from './tool-names'
 export type { AgentToolName as AgentToolNameValue } from './tool-names'
 export type { AgentToolkitOptions } from './toolkit'
 
-type AgentsResource = {
-  getPolicy(): Promise<Record<string, unknown>>
-  listActions(params: {
-    sessionId?: string
-    limit?: number
-    offset?: number
-  }): Promise<Record<string, unknown>>
-}
-
 // 把 SDK 的资源 API 暴露成 MCP 工具。所有常规工具先登记 /v1/agent/actions：
 // policy 自动放行则执行并写回 executed；需要人工审批则返回 pending_approval。
 export function createAgentToolkitServer(options: AgentToolkitOptions): McpServer {
@@ -43,7 +34,6 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
     baseUrl: options.baseUrl,
     fetch: options.fetch,
   })
-  const agents = (client as StableOps & { agents: AgentsResource }).agents
 
   const server = new McpServer({ name: 'stableops', version: '0.1.0' })
 
@@ -118,7 +108,7 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
     },
     async (args) =>
       withPolicyGate(options, AgentToolName.GET_AGENT_POLICY, args, async () =>
-        agents.getPolicy(),
+        client.agents.getPolicy(),
       ),
   )
 
@@ -139,7 +129,7 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
     },
     async (args) =>
       withPolicyGate(options, AgentToolName.LIST_AGENT_ACTIONS, args, async () =>
-        agents.listActions({
+        client.agents.listActions({
           sessionId: args.session_id,
           limit: args.limit,
           offset: args.offset,
