@@ -401,4 +401,133 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     ])
     expect(importRequests).toHaveLength(0)
   })
+
+  it('create_webhook_endpoint：经 SDK 映射输入并返回 camelCase 字段', async () => {
+    const webhookRequests: FakeRequest[] = []
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'POST /v1/webhook-endpoints': (request: FakeRequest) => {
+        webhookRequests.push(request)
+        return {
+          id: 'we_1',
+          url: 'https://merchant.test/webhooks',
+          description: 'primary',
+          enabled_events: ['payment.finalized'],
+          redact_metadata: true,
+          disabled_at: null,
+          created_at: '2026-07-09T00:00:00.000Z',
+          secret: 'whsec_1',
+        }
+      },
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.CREATE_WEBHOOK_ENDPOINT,
+      arguments: {
+        url: 'https://merchant.test/webhooks',
+        description: 'primary',
+        enabled_events: ['payment.finalized'],
+        redact_metadata: true,
+      },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({
+      id: 'we_1',
+      redactMetadata: true,
+      secret: 'whsec_1',
+    })
+    expect(webhookRequests[0]?.body).toEqual({
+      url: 'https://merchant.test/webhooks',
+      description: 'primary',
+      enabled_events: ['payment.finalized'],
+      redact_metadata: true,
+    })
+  })
+
+  it('create_merchant_plan：返回 SDK camelCase 套餐字段', async () => {
+    const planRequests: FakeRequest[] = []
+    const plan = {
+      id: 'plan_1',
+      code: 'starter',
+      name: 'Starter',
+      description: null,
+      group_key: 'demo',
+      amount: '9.00',
+      interval: 'month',
+      interval_count: 1,
+      trial_days: null,
+      metadata: null,
+      is_active: true,
+      is_template: false,
+      created_at: '2026-07-09T00:00:00.000Z',
+      updated_at: '2026-07-09T00:00:00.000Z',
+    }
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'POST /v1/merchant/plans': (request: FakeRequest) => {
+        planRequests.push(request)
+        return plan
+      },
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.CREATE_MERCHANT_PLAN,
+      arguments: {
+        code: 'starter',
+        name: 'Starter',
+        group_key: 'demo',
+        amount: '9.00',
+        interval: 'month',
+        interval_count: 1,
+      },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({ id: 'plan_1', groupKey: 'demo' })
+    expect(planRequests[0]?.headers.get('idempotency-key')).toBe('act-1')
+    expect(planRequests[0]?.body).toMatchObject({
+      code: 'starter',
+      group_key: 'demo',
+      interval_count: 1,
+    })
+  })
+
+  it('get_agent_policy：读取策略且不暴露 policy mutation 工具', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'GET /v1/agent/policy': () => ({
+        id: 'default',
+        allowed_tools: ['get_order'],
+        per_action_limit: null,
+        daily_limit: null,
+        require_approval: true,
+        created_at: '1970-01-01T00:00:00.000Z',
+        updated_at: '1970-01-01T00:00:00.000Z',
+      }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({ name: AgentToolName.GET_AGENT_POLICY, arguments: {} })
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({ allowed_tools: ['get_order'] })
+
+    const tools = await client.listTools()
+    const names = tools.tools.map((tool) => tool.name)
+    expect(names).not.toContain('upsert_agent_policy')
+    expect(names).not.toContain('approve_agent_action')
+    expect(names).not.toContain('reject_agent_action')
+    expect(names).not.toContain('revoke_agent_session')
+  })
 })

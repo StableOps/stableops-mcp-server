@@ -3,22 +3,18 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StableOps } from '@stableops/api-sdk'
 import { z } from 'zod'
 
+import { registerAgentTools } from './register-agents'
 import { registerAddressTools } from './register-addresses'
 import { registerCheckoutSessionTools } from './register-checkout-sessions'
+import { registerMerchantSubscriptionTools } from './register-merchant-subscriptions'
 import { registerPaymentOrderTools } from './register-payment-orders'
-import {
-  AGENT_ACTION_OUTPUT,
-  AGENT_POLICY_OUTPUT,
-  COMMON_LIST_INPUT,
-  WEBHOOK_DELIVERY_OUTPUT,
-} from './schemas'
+import { registerWebhookTools } from './register-webhooks'
 import { AgentToolName } from './tool-names'
 import {
   errorFromException,
   ok,
   requestAction,
   type AgentToolkitOptions,
-  withPolicyGate,
 } from './toolkit'
 
 export { AgentToolName } from './tool-names'
@@ -39,59 +35,9 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
   registerPaymentOrderTools(server, client, options)
   registerCheckoutSessionTools(server, client, options)
   registerAddressTools(server, client, options)
-
-  server.registerTool(
-    AgentToolName.LIST_WEBHOOK_DELIVERIES,
-    {
-      title: 'List webhook deliveries',
-      description: 'Read the recent webhook deliveries (read-only).',
-      inputSchema: { ...COMMON_LIST_INPUT },
-      outputSchema: { items: z.array(WEBHOOK_DELIVERY_OUTPUT) },
-    },
-    async (args) =>
-      withPolicyGate(options, AgentToolName.LIST_WEBHOOK_DELIVERIES, args, async () => ({
-        items: await client.webhooks.listDeliveries({ limit: args.limit }),
-      })),
-  )
-
-  server.registerTool(
-    AgentToolName.GET_AGENT_POLICY,
-    {
-      title: 'Get agent policy',
-      description: 'Read the workspace agent policy (read-only).',
-      inputSchema: {},
-      outputSchema: AGENT_POLICY_OUTPUT,
-    },
-    async (args) =>
-      withPolicyGate(options, AgentToolName.GET_AGENT_POLICY, args, async () =>
-        client.agents.getPolicy(),
-      ),
-  )
-
-  server.registerTool(
-    AgentToolName.LIST_AGENT_ACTIONS,
-    {
-      title: 'List agent actions',
-      description: 'Read agent action audit records (read-only).',
-      inputSchema: {
-        session_id: z.string().optional(),
-        limit: z.number().int().min(1).max(200).optional(),
-        offset: z.number().int().min(0).optional(),
-      },
-      outputSchema: {
-        items: z.array(AGENT_ACTION_OUTPUT),
-        has_more: z.boolean(),
-      },
-    },
-    async (args) =>
-      withPolicyGate(options, AgentToolName.LIST_AGENT_ACTIONS, args, async () =>
-        client.agents.listActions({
-          sessionId: args.session_id,
-          limit: args.limit,
-          offset: args.offset,
-        }),
-      ),
-  )
+  registerWebhookTools(server, client, options)
+  registerMerchantSubscriptionTools(server, client, options)
+  registerAgentTools(server, client, options)
 
   server.registerTool(
     AgentToolName.REQUEST_ACTION_APPROVAL,
