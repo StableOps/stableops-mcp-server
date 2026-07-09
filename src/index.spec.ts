@@ -63,6 +63,24 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     close = undefined
   })
 
+  it('listTools：只注册只读 agent 工具，不注册自升级工具', async () => {
+    const { client, server } = await connect({})
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.listTools()
+    const names = res.tools.map((tool) => tool.name)
+
+    expect(names).toContain('get_agent_policy')
+    expect(names).toContain('list_agent_actions')
+    expect(names).not.toContain('upsert_agent_policy')
+    expect(names).not.toContain('approve_agent_action')
+    expect(names).not.toContain('reject_agent_action')
+    expect(names).not.toContain('revoke_agent_session')
+  })
+
   it('get_order：返回 structuredContent 且通过 outputSchema 校验', async () => {
     const { client, server } = await connect({
       ...AUTO_ALLOW,
@@ -210,5 +228,42 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     expect(res.isError).toBeFalsy()
     const structured = res.structuredContent as { acceptedAssets?: { chain: string }[] }
     expect(structured.acceptedAssets?.[0]?.chain).toBe('solana')
+  })
+
+  it('create_payment_order：optimism 与 bsc 链通过 ChainIdSchema 校验', async () => {
+    const MULTI_CHAIN_ORDER = {
+      ...WIRE_ORDER,
+      accepted_assets: [
+        { chain: 'optimism', asset: 'USDC' },
+        { chain: 'bsc', asset: 'USDT' },
+      ],
+      payment_instructions: [
+        { chain: 'optimism', asset: 'USDC', address: '0xop' },
+        { chain: 'bsc', asset: 'USDT', address: '0xbsc' },
+      ],
+    }
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'POST /v1/payment-orders': () => MULTI_CHAIN_ORDER,
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+    const res = await client.callTool({
+      name: AgentToolName.CREATE_PAYMENT_ORDER,
+      arguments: {
+        merchant_order_id: 'm-multi',
+        amount: '1',
+        accepted_assets: [
+          { chain: 'optimism', asset: 'USDC' },
+          { chain: 'bsc', asset: 'USDT' },
+        ],
+        expires_at: '2026-12-31T00:00:00.000Z',
+      },
+    })
+    expect(res.isError).toBeFalsy()
+    const structured = res.structuredContent as { acceptedAssets?: { chain: string }[] }
+    expect(structured.acceptedAssets?.map((item) => item.chain)).toEqual(['optimism', 'bsc'])
   })
 })
