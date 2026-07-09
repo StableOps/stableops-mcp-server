@@ -3,14 +3,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StableOps } from '@stableops/api-sdk'
 import { z } from 'zod'
 
+import { registerAddressTools } from './register-addresses'
+import { registerCheckoutSessionTools } from './register-checkout-sessions'
+import { registerPaymentOrderTools } from './register-payment-orders'
 import {
   AGENT_ACTION_OUTPUT,
   AGENT_POLICY_OUTPUT,
-  AssetSchema,
-  ChainIdSchema,
   COMMON_LIST_INPUT,
-  PAYMENT_ORDER_OUTPUT,
-  TIMELINE_ENTRY_OUTPUT,
   WEBHOOK_DELIVERY_OUTPUT,
 } from './schemas'
 import { AgentToolName } from './tool-names'
@@ -37,22 +36,9 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
 
   const server = new McpServer({ name: 'stableops', version: '0.1.0' })
 
-  server.registerTool(
-    AgentToolName.GET_ORDER,
-    {
-      title: 'Get payment order',
-      description: 'Look up a single payment order by id (read-only).',
-      inputSchema: { id: z.string().min(1) },
-      outputSchema: {
-        ...PAYMENT_ORDER_OUTPUT,
-        timeline: z.array(TIMELINE_ENTRY_OUTPUT),
-      },
-    },
-    async (args) =>
-      withPolicyGate(options, AgentToolName.GET_ORDER, args, async () =>
-        client.paymentOrders.retrieve(args.id),
-      ),
-  )
+  registerPaymentOrderTools(server, client, options)
+  registerCheckoutSessionTools(server, client, options)
+  registerAddressTools(server, client, options)
 
   server.registerTool(
     AgentToolName.LIST_WEBHOOK_DELIVERIES,
@@ -66,36 +52,6 @@ export function createAgentToolkitServer(options: AgentToolkitOptions): McpServe
       withPolicyGate(options, AgentToolName.LIST_WEBHOOK_DELIVERIES, args, async () => ({
         items: await client.webhooks.listDeliveries({ limit: args.limit }),
       })),
-  )
-
-  server.registerTool(
-    AgentToolName.CREATE_PAYMENT_ORDER,
-    {
-      title: 'Create a payment order',
-      description:
-        'Open a new payment order. Subject to per_action_limit / daily_limit / approval gating in the workspace policy.',
-      inputSchema: {
-        merchant_order_id: z.string().min(1).max(128),
-        amount: z.string(),
-        accepted_assets: z.array(z.object({ chain: ChainIdSchema, asset: AssetSchema })).min(1),
-        expires_at: z.string(),
-        metadata: z.record(z.string(), z.unknown()).optional(),
-      },
-      outputSchema: PAYMENT_ORDER_OUTPUT,
-    },
-    async (args) =>
-      withPolicyGate(options, AgentToolName.CREATE_PAYMENT_ORDER, args, async (actionId) =>
-        client.paymentOrders.create(
-          {
-            merchantOrderId: args.merchant_order_id,
-            amount: args.amount,
-            acceptedAssets: args.accepted_assets,
-            expiresAt: args.expires_at,
-            metadata: args.metadata,
-          },
-          { idempotencyKey: actionId },
-        ),
-      ),
   )
 
   server.registerTool(

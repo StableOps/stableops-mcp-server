@@ -4,15 +4,42 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { AgentToolName, createAgentToolkitServer } from './index'
 
+type FakeRequest = {
+  method: string
+  path: string
+  headers: Headers
+  body: unknown
+}
+
+type FakeRouteHandler = (request: FakeRequest) => unknown
+
+type FakeRoute = FakeRouteHandler | unknown
+
 // 路由式假 fetch：MCP server 自身的 /v1/agent/* 与 SDK HttpClient 的资源请求都走它。
 // 资源端点须返回 SDK 期望的 wire（snake_case）形态，SDK fromWire 成 camelCase 后回传给工具，
 // 工具再放进 structuredContent —— 这条链路正是 outputSchema 校验要守住的。
-function fakeFetch(routes: Record<string, () => unknown>): typeof fetch {
+function fakeFetch(routes: Record<string, FakeRoute>): typeof fetch {
   return async (input, init) => {
     const raw = typeof input === 'string' ? input : (input as URL).toString()
-    const key = `${init?.method ?? 'GET'} ${new URL(raw).pathname}`
+    const url = new URL(raw)
+    const method = init?.method ?? 'GET'
+    const key = `${method} ${url.pathname}`
     const found = key in routes
-    const body = found ? routes[key]() : { code: 'route_not_found', message: key }
+    const request: FakeRequest = {
+      method,
+      path: url.pathname,
+      headers: new Headers(init?.headers),
+      body:
+        typeof init?.body === 'string' && init.body.length > 0
+          ? JSON.parse(init.body)
+          : undefined,
+    }
+    const route = routes[key]
+    const body = found
+      ? typeof route === 'function'
+        ? (route as FakeRouteHandler)(request)
+        : route
+      : { code: 'route_not_found', message: key }
     return new Response(JSON.stringify(body), {
       status: found ? 200 : 404,
       headers: { 'content-type': 'application/json' },
@@ -20,7 +47,7 @@ function fakeFetch(routes: Record<string, () => unknown>): typeof fetch {
   }
 }
 
-async function connect(routes: Record<string, () => unknown>) {
+async function connect(routes: Record<string, FakeRoute>) {
   const server = createAgentToolkitServer({
     agentSessionId: 'sess-1',
     baseUrl: 'http://api.test.local',
@@ -265,5 +292,113 @@ describe('agent toolkit — outputSchema / structuredContent', () => {
     expect(res.isError).toBeFalsy()
     const structured = res.structuredContent as { acceptedAssets?: { chain: string }[] }
     expect(structured.acceptedAssets?.map((item) => item.chain)).toEqual(['optimism', 'bsc'])
+  })
+
+  it('list_payment_orders：返回 items 且订单条目为 SDK camelCase 字段', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'GET /v1/payment-orders': () => ({ items: [WIRE_ORDER] }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+    const res = await client.callTool({
+      name: AgentToolName.LIST_PAYMENT_ORDERS,
+      arguments: { status: 'created', limit: 10 },
+    })
+    expect(res.isError).toBeFalsy()
+    const items = (res.structuredContent as { items: Record<string, unknown>[] }).items
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ id: 'ord-1', merchantOrderId: 'm-1' })
+  })
+
+  it('create_checkout_session：自动放行时返回 url/paymentOrder，并用 actionId 作 idempotency key', async () => {
+    const checkoutRequests: FakeRequest[] = []
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'POST /v1/checkout-sessions': (request: FakeRequest) => {
+        checkoutRequests.push(request)
+        return {
+          id: 'cs-1',
+          client_secret: 'sec-1',
+          status: 'open',
+          title: 'Checkout',
+          description: 'Pay invoice',
+          success_url: 'https://example.com/success',
+          cancel_url: 'https://example.com/cancel',
+          walletconnect_project_id: 'wc-1',
+          expires_at: '2026-12-31T00:00:00.000Z',
+          created_at: '2026-05-31T00:00:00.000Z',
+          payment_order: WIRE_ORDER,
+        }
+      },
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+    const res = await client.callTool({
+      name: AgentToolName.CREATE_CHECKOUT_SESSION,
+      arguments: {
+        merchant_order_id: 'm-1',
+        amount: '100.00',
+        amount_mode: 'auto',
+        accepted_assets: [{ chain: 'base', asset: 'USDC' }],
+        expires_at: '2026-12-31T00:00:00.000Z',
+        title: 'Checkout',
+        description: 'Pay invoice',
+        success_url: 'https://example.com/success',
+        cancel_url: 'https://example.com/cancel',
+        walletconnect_project_id: 'wc-1',
+        metadata: { invoiceId: 'inv-1' },
+      },
+    })
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({
+      id: 'cs-1',
+      url: 'https://pay.stableops.dev/c/cs-1?client_secret=sec-1',
+      paymentOrder: { id: 'ord-1', merchantOrderId: 'm-1' },
+    })
+    expect(checkoutRequests).toHaveLength(1)
+    expect(checkoutRequests[0]?.headers.get('idempotency-key')).toBe('act-1')
+    expect(checkoutRequests[0]?.body).toMatchObject({
+      merchant_order_id: 'm-1',
+      amount: '100.00',
+      amount_mode: 'auto',
+      success_url: 'https://example.com/success',
+      walletconnect_project_id: 'wc-1',
+    })
+  })
+
+  it('import_addresses：pending approval 时不调用地址导入接口', async () => {
+    const importRequests: FakeRequest[] = []
+    const { client, server } = await connect({
+      'POST /v1/agent/actions': () => ({ decision: 'pending_approval', actionId: 'act-4' }),
+      'POST /v1/addresses/import': (request: FakeRequest) => {
+        importRequests.push(request)
+        return { imported: 1, addresses: [] }
+      },
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+    const res = await client.callTool({
+      name: AgentToolName.IMPORT_ADDRESSES,
+      arguments: {
+        chain: 'base',
+        addresses: ['0xabc'],
+        label: 'ops',
+        mode: 'single',
+      },
+    })
+    expect(res.isError).toBe(true)
+    expect(res.content).toEqual([
+      expect.objectContaining({
+        text: expect.stringContaining('Action requires human approval'),
+      }),
+    ])
+    expect(importRequests).toHaveLength(0)
   })
 })
