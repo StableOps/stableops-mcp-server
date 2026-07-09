@@ -4,17 +4,20 @@
 
 [View English README](./README.md)
 
-本服务是一个 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio 服务，让 AI Agent（Claude Desktop、Cursor、VS Code 等）通过受控的工具接口访问 StableOps 支付操作。
+本服务是一个 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio 服务，让 AI Agent（Claude Desktop、Cursor、VS Code 等）通过受控的工具接口访问 StableOps 支付单、地址、Webhook、收银台、Agent 审计和商户订阅操作。
 
-所有操作都受工作区策略管控。只读工具（查询订单、事件、Webhook 投递）通常自动放行，写工具（创建付款单）需要经过 StableOps Dashboard 的人工审批。
+所有操作都受工作区策略管控。只读工具通常自动放行，写工具需要经过 StableOps Dashboard 的人工审批或显式白名单配置。
 
 ## 功能
 
-- **只读工具**：`get_order`、`list_webhook_deliveries`。查询 StableOps 数据，没有副作用。
-- **写工具**：`create_payment_order`。受策略控制，根据工作区配置可能需要人工审批。
-- **审批工具**：`request_action_approval`。在审批队列注册自定义操作，等待人工确认。
+- **支付单工具**：列出、查询、创建和取消支付单。
+- **地址工具**：查询地址池、列出地址、导入地址、更新地址元数据和移除地址。
+- **Webhook 工具**：管理端点、轮换密钥、查询投递、重放投递或死信。
+- **收银台工具**：创建托管收银台 Session。
+- **商户订阅工具**：管理套餐、订阅、账单、订阅设置和 Portal 会话。
+- **Agent 审计工具**：列出会话、查询策略、查询动作，以及登记自定义审批请求。
 - **策略执行**：每次工具调用在执行前都会经过工作区 action policy 检查。
-- **幂等写操作**：付款单创建使用 action ID 作为幂等键，防止重复。
+- **幂等写操作**：支付单和收银台 Session 创建使用 action ID 作为幂等键，防止重复。
 - **审计日志**：所有工具执行记录都会写入工作区审计日志。
 
 ## 环境要求
@@ -101,12 +104,18 @@ const server = createAgentToolkitServer({
 
 ## 可用工具
 
-| 工具                      | 描述                        | 权限                     |
-| ------------------------- | --------------------------- | ------------------------ |
-| `get_order`               | 按 ID 查询单个付款单        | 只读（自动放行）         |
-| `list_webhook_deliveries` | 查看最近的 Webhook 投递记录 | 只读（自动放行）         |
-| `create_payment_order`    | 创建新的付款单              | 策略控制（可能需要审批） |
-| `request_action_approval` | 注册自定义操作等待人工确认  | 始终需要审批             |
+工具按资源族分组。所有工具都会先调用 `/v1/agent/actions`；只读工具通常自动放行，写工具受 `allowed_tools`、`require_approval` 和适用的金额上限控制。
+
+| 资源族 | 工具 |
+| ------ | ---- |
+| Payment Orders | `list_payment_orders`, `get_order`, `create_payment_order`, `cancel_payment_order` |
+| Addresses | `get_address_pools`, `list_addresses`, `import_addresses`, `update_address`, `remove_address` |
+| Webhooks | `list_webhook_endpoints`, `create_webhook_endpoint`, `update_webhook_endpoint`, `rotate_webhook_secret`, `list_webhook_deliveries`, `replay_webhook_delivery`, `replay_webhook_dead_letters` |
+| Checkout Sessions | `create_checkout_session` |
+| Agents | `list_agent_sessions`, `get_agent_policy`, `list_agent_actions`, `request_action_approval` |
+| Merchant Subscriptions | `list_merchant_plans`, `create_merchant_plan`, `update_merchant_plan`, `delete_merchant_plan`, `create_merchant_subscription`, `list_merchant_subscriptions`, `get_merchant_subscription`, `get_merchant_subscription_by_user`, `change_merchant_subscription_plan`, `cancel_merchant_subscription`, `resume_merchant_subscription`, `list_merchant_invoices`, `get_merchant_invoice`, `pay_merchant_invoice`, `get_merchant_invoice_payment_status`, `get_merchant_subscription_settings`, `update_merchant_subscription_settings`, `create_merchant_portal_session`, `revoke_merchant_portal_session` |
+
+`request_action_approval` 是兜底审批/审计登记工具。它会把自定义动作放入人工审批流，但本身不会执行 StableOps API 操作。Agents 资源族刻意不暴露策略更新、动作批准/拒绝、Session 吊销等自提权操作。
 
 ## 环境变量
 

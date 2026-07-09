@@ -4,17 +4,20 @@
 
 [中文文档](./README.zh-CN.md)
 
-This server runs as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio server, giving AI agents (Claude Desktop, Cursor, VS Code, etc.) access to StableOps payment operations through a controlled tool interface.
+This server runs as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) stdio server, giving AI agents (Claude Desktop, Cursor, VS Code, etc.) access to StableOps payment, address, webhook, checkout, agent-audit, and merchant-subscription operations through a controlled tool interface.
 
-Operations are gated by workspace policy. Read tools (query orders, events, webhook deliveries) are typically auto-allowed, while write tools (create payment orders) require human approval from the StableOps dashboard.
+Operations are gated by workspace policy. Read tools are typically auto-allowed, while write tools require human approval or explicit allow-list configuration from the StableOps dashboard.
 
 ## Features
 
-- **Read tools**: `get_order`, `list_webhook_deliveries`. Query StableOps data without side effects.
-- **Write tools**: `create_payment_order`. Policy-gated, requires human approval per workspace configuration.
-- **Approval tool**: `request_action_approval`. Register a custom action in the approval queue for manual sign-off.
+- **Payment tools**: list, read, create, and cancel payment orders.
+- **Address tools**: inspect address pools, list addresses, import addresses, update address metadata, and remove addresses.
+- **Webhook tools**: manage endpoints, rotate secrets, list deliveries, and replay deliveries or dead letters.
+- **Checkout tools**: create hosted checkout sessions.
+- **Merchant subscription tools**: manage plans, subscriptions, invoices, subscription settings, and portal sessions.
+- **Agent audit tools**: list sessions, read policy, list actions, and register custom approval requests.
 - **Policy enforcement**: every tool call is checked against the workspace action policy before execution.
-- **Idempotent writes**: payment order creation uses the action ID as idempotency key to prevent duplicates.
+- **Idempotent writes**: payment order and checkout session creation use the action ID as idempotency key to prevent duplicates.
 - **Audit trail**: all tool executions are recorded in the workspace audit log.
 
 ## Requirements
@@ -101,12 +104,18 @@ const server = createAgentToolkitServer({
 
 ## Available Tools
 
-| Tool                      | Description                                 | Access                              |
-| ------------------------- | ------------------------------------------- | ----------------------------------- |
-| `get_order`               | Look up a single payment order by ID        | Read-only (auto-allowed)            |
-| `list_webhook_deliveries` | Read recent webhook delivery history        | Read-only (auto-allowed)            |
-| `create_payment_order`    | Create a new payment order                  | Policy-gated (may require approval) |
-| `request_action_approval` | Register a custom action for human sign-off | Always requires approval            |
+Tools are grouped by resource family. All tools call `/v1/agent/actions` before execution; read-only tools are usually auto-allowed, and write tools are controlled by `allowed_tools`, `require_approval`, and amount limits where applicable.
+
+| Family | Tools |
+| ------ | ----- |
+| Payment Orders | `list_payment_orders`, `get_order`, `create_payment_order`, `cancel_payment_order` |
+| Addresses | `get_address_pools`, `list_addresses`, `import_addresses`, `update_address`, `remove_address` |
+| Webhooks | `list_webhook_endpoints`, `create_webhook_endpoint`, `update_webhook_endpoint`, `rotate_webhook_secret`, `list_webhook_deliveries`, `replay_webhook_delivery`, `replay_webhook_dead_letters` |
+| Checkout Sessions | `create_checkout_session` |
+| Agents | `list_agent_sessions`, `get_agent_policy`, `list_agent_actions`, `request_action_approval` |
+| Merchant Subscriptions | `list_merchant_plans`, `create_merchant_plan`, `update_merchant_plan`, `delete_merchant_plan`, `create_merchant_subscription`, `list_merchant_subscriptions`, `get_merchant_subscription`, `get_merchant_subscription_by_user`, `change_merchant_subscription_plan`, `cancel_merchant_subscription`, `resume_merchant_subscription`, `list_merchant_invoices`, `get_merchant_invoice`, `pay_merchant_invoice`, `get_merchant_invoice_payment_status`, `get_merchant_subscription_settings`, `update_merchant_subscription_settings`, `create_merchant_portal_session`, `revoke_merchant_portal_session` |
+
+`request_action_approval` is a fallback approval/audit registration tool. It queues a custom action for human review, but it does not execute a StableOps API operation by itself. The Agents family intentionally does not expose self-escalation operations such as policy updates, action approval/rejection, or session revocation.
 
 ## Environment Variables
 
