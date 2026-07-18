@@ -22,7 +22,7 @@ const ADDRESS_OUTPUT = z.object({
   label: z.string().nullable(),
   mode: z.string(),
   status: z.string(),
-  created_at: z.string(),
+  createdAt: z.string(),
 })
 
 export function registerAddressTools(
@@ -57,7 +57,7 @@ export function registerAddressTools(
       },
       outputSchema: {
         items: z.array(ADDRESS_OUTPUT),
-        has_more: z.boolean(),
+        hasMore: z.boolean(),
       },
     },
     async (args) =>
