@@ -23,6 +23,7 @@ export const AssetSchema = z.enum(['USDC', 'USDT'])
 
 export const COMMON_LIST_INPUT = {
   limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
 }
 
 // outputSchema 用 SDK fromWire 后的字段形态。支付订单为 camelCase；agent 资源为 snake_case。

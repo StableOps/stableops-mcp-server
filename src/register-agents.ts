@@ -29,11 +29,29 @@ export function registerAgentTools(
         limit: z.number().int().min(1).max(200).optional(),
         offset: z.number().int().min(0).optional(),
       },
-      outputSchema: { items: z.array(AGENT_SESSION_OUTPUT), has_more: z.boolean() },
+      outputSchema: {
+        items: z.array(AGENT_SESSION_OUTPUT),
+        has_more: z.boolean(),
+        total: z.number().int().min(0),
+      },
     },
     async (args) =>
       withPolicyGate(options, AgentToolName.LIST_AGENT_SESSIONS, args, async () =>
         client.agents.listSessions({ limit: args.limit, offset: args.offset }),
+      ),
+  )
+
+  server.registerTool(
+    AgentToolName.RESTORE_AGENT_SESSION,
+    {
+      title: 'Restore agent session',
+      description: 'Restore a revoked agent session. This write operation is policy-gated.',
+      inputSchema: { session_id: z.string().min(1) },
+      outputSchema: AGENT_SESSION_OUTPUT.shape,
+    },
+    async (args) =>
+      withPolicyGate(options, AgentToolName.RESTORE_AGENT_SESSION, args, async () =>
+        client.agents.restoreSession(args.session_id),
       ),
   )
 
@@ -64,6 +82,7 @@ export function registerAgentTools(
       outputSchema: {
         items: z.array(AGENT_ACTION_OUTPUT),
         has_more: z.boolean(),
+        total: z.number().int().min(0),
       },
     },
     async (args) =>

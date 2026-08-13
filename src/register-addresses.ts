@@ -58,6 +58,7 @@ export function registerAddressTools(
       outputSchema: {
         items: z.array(ADDRESS_OUTPUT),
         hasMore: z.boolean(),
+        total: z.number().int().min(0),
       },
     },
     async (args) =>

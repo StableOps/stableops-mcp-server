@@ -66,7 +66,7 @@ describe('withPolicyGate', () => {
     expect(calls).toEqual(['POST /v1/agent/actions'])
   })
 
-  it('资源 API 返回 StableOpsError 时不写 executed，并映射错误内容', async () => {
+  it('资源 API 返回 StableOpsError 时写入失败结果并映射错误内容', async () => {
     const calls: string[] = []
 
     const result = await withPolicyGate(
@@ -75,6 +75,7 @@ describe('withPolicyGate', () => {
           'POST /v1/agent/actions': () => ({
             body: { decision: 'auto_allowed', actionId: 'act-1' },
           }),
+          'POST /v1/agent/actions/act-1/executed': () => ({ body: { status: 'executed' } }),
         },
         calls,
       ),
@@ -88,7 +89,10 @@ describe('withPolicyGate', () => {
     )
 
     expect(asToolResult(result).isError).toBe(true)
-    expect(calls).toEqual(['POST /v1/agent/actions'])
+    expect(calls).toEqual([
+      'POST /v1/agent/actions',
+      'POST /v1/agent/actions/act-1/executed',
+    ])
     expect(readError(result)).toMatchObject({
       code: 'forbidden',
       status: 403,
@@ -96,7 +100,7 @@ describe('withPolicyGate', () => {
     })
   })
 
-  it('/executed 写回失败时仍返回成功资源结果', async () => {
+  it('/executed 连续写回失败时明确报告操作已成功但审计未确认', async () => {
     const calls: string[] = []
 
     const result = await withPolicyGate(
@@ -117,11 +121,62 @@ describe('withPolicyGate', () => {
       async () => ({ id: 'ord-1', status: 'created' }),
     )
 
-    expect(asToolResult(result).isError).toBeUndefined()
-    expect(asToolResult(result).structuredContent).toEqual({ id: 'ord-1', status: 'created' })
+    expect(asToolResult(result).isError).toBe(true)
+    expect(readError(result)).toMatchObject({
+      code: 'agent_audit_write_failed',
+      action_id: 'act-1',
+      operation_succeeded: true,
+    })
     expect(calls).toEqual([
       'POST /v1/agent/actions',
       'POST /v1/agent/actions/act-1/executed',
+      'POST /v1/agent/actions/act-1/executed',
+      'POST /v1/agent/actions/act-1/executed',
     ])
+  })
+
+  it('相同工具输入重试时先补写原 action 审计，不申请新 action 或重复资源操作', async () => {
+    const calls: string[] = []
+    let requestCalls = 0
+    let auditCalls = 0
+    let executeCalls = 0
+    const options = makeOptions(
+      {
+        'POST /v1/agent/actions': () => {
+          requestCalls += 1
+          return {
+            body: {
+              decision: 'auto_allowed',
+              actionId: requestCalls === 1 ? 'act-cache' : 'act-duplicate',
+            },
+          }
+        },
+        'POST /v1/agent/actions/act-cache/executed': () => {
+          auditCalls += 1
+          return auditCalls <= 3
+            ? { status: 503, body: { message: 'try again' } }
+            : { body: { status: 'executed' } }
+        },
+      },
+      calls,
+    )
+    const execute = async () => {
+      executeCalls += 1
+      return { id: 'ord-cache' }
+    }
+
+    expect(
+      asToolResult(
+        await withPolicyGate(options, 'get_order', { id: 'ord-cache', expand: true }, execute),
+      ).isError,
+    ).toBe(true)
+    expect(
+      asToolResult(
+        await withPolicyGate(options, 'get_order', { expand: true, id: 'ord-cache' }, execute),
+      ).isError,
+    ).toBeUndefined()
+    expect(requestCalls).toBe(1)
+    expect(executeCalls).toBe(1)
+    expect(auditCalls).toBe(4)
   })
 })

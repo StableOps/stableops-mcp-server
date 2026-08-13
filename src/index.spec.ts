@@ -104,7 +104,7 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     close = undefined
   })
 
-  it('listTools：只注册只读 agent 工具，不注册自升级工具', async () => {
+  it('listTools：注册 session 恢复，但不注册策略和审批自升级工具', async () => {
     const { client, server } = await connect({})
     close = async () => {
       await client.close()
@@ -116,6 +116,7 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
 
     expect(names).toContain('get_agent_policy')
     expect(names).toContain('list_agent_actions')
+    expect(names).toContain('restore_agent_session')
     expect(names).not.toContain('upsert_agent_policy')
     expect(names).not.toContain('approve_agent_action')
     expect(names).not.toContain('reject_agent_action')
@@ -262,6 +263,8 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
             payload: { type: 'payment.confirmed', data: { payment_order_id: 'ord-1' } },
           },
         ],
+        has_more: false,
+        total: 1,
       }),
     })
     close = async () => {
@@ -350,7 +353,11 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
   it('list_payment_orders：返回 items 且订单条目为 SDK camelCase 字段', async () => {
     const { client, server } = await connect({
       ...AUTO_ALLOW,
-      'GET /v1/payment-orders': () => ({ items: [WIRE_ORDER] }),
+      'GET /v1/payment-orders': () => ({
+        items: [WIRE_ORDER],
+        has_more: false,
+        total: 1,
+      }),
     })
     close = async () => {
       await client.close()
@@ -364,6 +371,7 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     const items = (res.structuredContent as { items: Record<string, unknown>[] }).items
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({ id: 'ord-1', merchantOrderId: 'm-1' })
+    expect(res.structuredContent).toMatchObject({ hasMore: false, total: 1 })
   })
 
   it('create_checkout_session：自动放行时返回 url/paymentOrder，并用 actionId 作 idempotency key', async () => {
@@ -502,6 +510,25 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     })
   })
 
+  it('remove_webhook_endpoint：经策略门控删除端点', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'DELETE /v1/webhook-endpoints/we_1': () => ({ success: true }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.REMOVE_WEBHOOK_ENDPOINT,
+      arguments: { endpoint_id: 'we_1' },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toEqual({ success: true })
+  })
+
   it('create_merchant_plan：返回 SDK camelCase 套餐字段', async () => {
     const planRequests: FakeRequest[] = []
     const plan = {
@@ -580,5 +607,30 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     expect(names).not.toContain('approve_agent_action')
     expect(names).not.toContain('reject_agent_action')
     expect(names).not.toContain('revoke_agent_session')
+  })
+
+  it('restore_agent_session：经策略门控恢复会话', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'POST /v1/agent/sessions/as_1/restore': () => ({
+        id: 'as_1',
+        label: 'ops-bot',
+        created_at: '2026-07-01T00:00:00.000Z',
+        expires_at: null,
+        revoked_at: null,
+      }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.RESTORE_AGENT_SESSION,
+      arguments: { session_id: 'as_1' },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({ id: 'as_1', revoked_at: null })
   })
 })

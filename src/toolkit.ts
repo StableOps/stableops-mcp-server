@@ -6,6 +6,19 @@ export type AgentToolkitOptions = ClientOptions & {
   fetch?: typeof fetch
 }
 
+type ExecutionOutcome<T> =
+  | { status: 'fulfilled'; data: T }
+  | { status: 'rejected'; error: unknown }
+
+type PendingAudit = {
+  actionId: string
+  outcome: ExecutionOutcome<Record<string, unknown>>
+}
+
+// 审计回写暂时失败时按「会话 + 工具 + 输入」保留执行结果。下一次相同调用会在申请
+// 新 action 前补写旧记录，避免响应丢失后重复执行资金或配置写操作。
+const pendingAudits = new Map<string, PendingAudit>()
+
 export async function withPolicyGate<T extends Record<string, unknown>>(
   options: AgentToolkitOptions,
   tool: string,
@@ -13,14 +26,57 @@ export async function withPolicyGate<T extends Record<string, unknown>>(
   execute: (actionId: string) => Promise<T>,
 ) {
   try {
+    const pendingKey = operationKey(options, tool, input)
+    const pending = pendingAudits.get(pendingKey) as
+      | { actionId: string; outcome: ExecutionOutcome<T> }
+      | undefined
+    if (pending) {
+      try {
+        await writeOutcome(options, pending.actionId, pending.outcome)
+        pendingAudits.delete(pendingKey)
+      } catch (auditError) {
+        return auditWriteFailure(pending.actionId, pending.outcome, auditError)
+      }
+      return pending.outcome.status === 'fulfilled'
+        ? ok(pending.outcome.data)
+        : errorFromException(pending.outcome.error)
+    }
+
     const result = await requestAction(options, { tool, input })
     if (result.decision !== 'auto_allowed') return blockedResponse(result)
 
-    const data = await execute(result.actionId)
-    await markExecuted(options, result.actionId, data)
-    return ok(data)
+    let outcome: ExecutionOutcome<T>
+    try {
+      outcome = { status: 'fulfilled', data: await execute(result.actionId) }
+    } catch (error) {
+      outcome = { status: 'rejected', error }
+    }
+    try {
+      await writeOutcome(options, result.actionId, outcome)
+    } catch (auditError) {
+      pendingAudits.set(pendingKey, {
+        actionId: result.actionId,
+        outcome: outcome as ExecutionOutcome<Record<string, unknown>>,
+      })
+      return auditWriteFailure(result.actionId, outcome, auditError)
+    }
+    return outcome.status === 'fulfilled' ? ok(outcome.data) : errorFromException(outcome.error)
   } catch (err) {
     return errorFromException(err)
+  }
+}
+
+async function writeOutcome<T>(
+  options: AgentToolkitOptions,
+  actionId: string,
+  outcome: ExecutionOutcome<T>,
+) {
+  if (outcome.status === 'fulfilled') {
+    await markExecuted(options, actionId, { result: outcome.data })
+  } else {
+    await markExecuted(options, actionId, {
+      errorMessage: exceptionMessage(outcome.error).slice(0, 512),
+    })
   }
 }
 
@@ -45,17 +101,27 @@ export async function requestAction(
 export async function markExecuted(
   options: AgentToolkitOptions,
   actionId: string,
-  result: unknown,
+  outcome: { result?: unknown; errorMessage?: string },
 ) {
-  try {
-    await fetchJson(options, {
-      method: 'POST',
-      path: `/v1/agent/actions/${encodeURIComponent(actionId)}/executed`,
-      body: { agent_session_id: options.agentSessionId, result },
-    })
-  } catch {
-    // executed 写入失败不影响 caller 拿到结果。
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await fetchJson(options, {
+        method: 'POST',
+        path: `/v1/agent/actions/${encodeURIComponent(actionId)}/executed`,
+        body: {
+          agent_session_id: options.agentSessionId,
+          ...(outcome.errorMessage === undefined
+            ? { result: outcome.result }
+            : { error_message: outcome.errorMessage }),
+        },
+      })
+      return
+    } catch (err) {
+      lastError = err
+    }
   }
+  throw lastError
 }
 
 export async function fetchJson<T>(
@@ -140,5 +206,57 @@ export function errorFromException(err: unknown) {
   return {
     isError: true,
     content: [{ type: 'text' as const, text: JSON.stringify({ message: String(err) }) }],
+  }
+}
+
+function exceptionMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+function operationKey(
+  options: AgentToolkitOptions,
+  tool: string,
+  input: Record<string, unknown>,
+): string {
+  return JSON.stringify([
+    options.baseUrl ?? 'https://api.stableops.dev',
+    options.agentSessionId,
+    tool,
+    canonicalJson(input),
+  ])
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, canonicalJson(item)]),
+  )
+}
+
+function auditWriteFailure<T>(
+  actionId: string,
+  outcome: ExecutionOutcome<T>,
+  auditError: unknown,
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          code: 'agent_audit_write_failed',
+          action_id: actionId,
+          operation_succeeded: outcome.status === 'fulfilled',
+          operation_error:
+            outcome.status === 'rejected' ? exceptionMessage(outcome.error) : undefined,
+          audit_error: exceptionMessage(auditError),
+          message:
+            'The operation finished, but StableOps could not confirm the agent audit record. Retrying this tool will only retry the audit write in the current MCP process.',
+        }),
+      },
+    ],
   }
 }

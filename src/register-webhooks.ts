@@ -30,13 +30,31 @@ export function registerWebhookTools(
     {
       title: 'List webhook endpoints',
       description: 'Read configured webhook endpoints.',
-      inputSchema: {},
-      outputSchema: { items: z.array(z.object(WEBHOOK_ENDPOINT_OUTPUT)) },
+      inputSchema: COMMON_LIST_INPUT,
+      outputSchema: {
+        items: z.array(z.object(WEBHOOK_ENDPOINT_OUTPUT)),
+        hasMore: z.boolean(),
+        total: z.number().int().min(0),
+      },
     },
     async (args) =>
-      withPolicyGate(options, AgentToolName.LIST_WEBHOOK_ENDPOINTS, args, async () => ({
-        items: await client.webhooks.listEndpoints(),
-      })),
+      withPolicyGate(options, AgentToolName.LIST_WEBHOOK_ENDPOINTS, args, async () =>
+        client.webhooks.listEndpointsPage({ limit: args.limit, offset: args.offset }),
+      ),
+  )
+
+  server.registerTool(
+    AgentToolName.REMOVE_WEBHOOK_ENDPOINT,
+    {
+      title: 'Remove webhook endpoint',
+      description: 'Delete a webhook endpoint. This write operation is policy-gated.',
+      inputSchema: { endpoint_id: z.string().min(1) },
+      outputSchema: { success: z.boolean() },
+    },
+    async (args) =>
+      withPolicyGate(options, AgentToolName.REMOVE_WEBHOOK_ENDPOINT, args, async () =>
+        client.webhooks.removeEndpoint(args.endpoint_id),
+      ),
   )
 
   server.registerTool(
@@ -111,17 +129,22 @@ export function registerWebhookTools(
         payment_order_id: z.string().optional(),
         ...COMMON_LIST_INPUT,
       },
-      outputSchema: { items: z.array(WEBHOOK_DELIVERY_OUTPUT) },
+      outputSchema: {
+        items: z.array(WEBHOOK_DELIVERY_OUTPUT),
+        hasMore: z.boolean(),
+        total: z.number().int().min(0),
+      },
     },
     async (args) =>
-      withPolicyGate(options, AgentToolName.LIST_WEBHOOK_DELIVERIES, args, async () => ({
-        items: await client.webhooks.listDeliveries({
+      withPolicyGate(options, AgentToolName.LIST_WEBHOOK_DELIVERIES, args, async () =>
+        client.webhooks.listDeliveriesPage({
           status: args.status as never,
           endpointId: args.endpoint_id,
           paymentOrderId: args.payment_order_id,
           limit: args.limit,
+          offset: args.offset,
         }),
-      })),
+      ),
   )
 
   server.registerTool(

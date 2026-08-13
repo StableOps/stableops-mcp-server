@@ -17,6 +17,7 @@ export const AgentToolName = {
   LIST_WEBHOOK_ENDPOINTS: 'list_webhook_endpoints',
   CREATE_WEBHOOK_ENDPOINT: 'create_webhook_endpoint',
   UPDATE_WEBHOOK_ENDPOINT: 'update_webhook_endpoint',
+  REMOVE_WEBHOOK_ENDPOINT: 'remove_webhook_endpoint',
   ROTATE_WEBHOOK_SECRET: 'rotate_webhook_secret',
   LIST_WEBHOOK_DELIVERIES: 'list_webhook_deliveries',
   REPLAY_WEBHOOK_DELIVERY: 'replay_webhook_delivery',
@@ -25,6 +26,7 @@ export const AgentToolName = {
   CREATE_CHECKOUT_SESSION: 'create_checkout_session',
 
   LIST_AGENT_SESSIONS: 'list_agent_sessions',
+  RESTORE_AGENT_SESSION: 'restore_agent_session',
   GET_AGENT_POLICY: 'get_agent_policy',
   LIST_AGENT_ACTIONS: 'list_agent_actions',
 

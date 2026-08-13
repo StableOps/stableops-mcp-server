@@ -42,16 +42,22 @@ export function registerPaymentOrderTools(
       inputSchema: {
         status: z.string().optional(),
         limit: z.number().int().min(1).max(200).optional(),
+        offset: z.number().int().min(0).optional(),
       },
-      outputSchema: { items: z.array(z.object(PAYMENT_ORDER_OUTPUT)) },
+      outputSchema: {
+        items: z.array(z.object(PAYMENT_ORDER_OUTPUT)),
+        hasMore: z.boolean(),
+        total: z.number().int().min(0),
+      },
     },
     async (args) =>
-      withPolicyGate(options, AgentToolName.LIST_PAYMENT_ORDERS, args, async () => ({
-        items: await client.paymentOrders.list({
+      withPolicyGate(options, AgentToolName.LIST_PAYMENT_ORDERS, args, async () =>
+        client.paymentOrders.listPage({
           status: args.status as never,
           limit: args.limit,
+          offset: args.offset,
         }),
-      })),
+      ),
   )
 
   server.registerTool(

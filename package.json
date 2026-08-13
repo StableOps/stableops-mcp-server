@@ -32,10 +32,10 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepublishOnly": "pnpm build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
