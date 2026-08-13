@@ -10,9 +10,9 @@ import { withPolicyGate } from './toolkit'
 const AGENT_SESSION_OUTPUT = z.object({
   id: z.string(),
   label: z.string().nullable(),
-  created_at: z.string(),
-  expires_at: z.string().nullable(),
-  revoked_at: z.string().nullable(),
+  createdAt: z.string(),
+  expiresAt: z.string().nullable(),
+  revokedAt: z.string().nullable(),
 })
 
 export function registerAgentTools(
@@ -31,7 +31,7 @@ export function registerAgentTools(
       },
       outputSchema: {
         items: z.array(AGENT_SESSION_OUTPUT),
-        has_more: z.boolean(),
+        hasMore: z.boolean(),
         total: z.number().int().min(0),
       },
     },
@@ -81,7 +81,7 @@ export function registerAgentTools(
       },
       outputSchema: {
         items: z.array(AGENT_ACTION_OUTPUT),
-        has_more: z.boolean(),
+        hasMore: z.boolean(),
         total: z.number().int().min(0),
       },
     },

@@ -1,7 +1,12 @@
 import { StableOpsError } from '@stableops/api-sdk'
 import { describe, expect, it } from 'vitest'
 
-import { withPolicyGate, type AgentToolkitOptions } from './toolkit'
+import {
+  fetchJson,
+  markExecuted,
+  withPolicyGate,
+  type AgentToolkitOptions,
+} from './toolkit'
 
 function makeOptions(
   routes: Record<string, () => { status?: number; body?: unknown }>,
@@ -10,6 +15,7 @@ function makeOptions(
   return {
     agentSessionId: 'sess-1',
     baseUrl: 'http://api.test.local',
+    _sleep: async () => {},
     fetch: async (input, init) => {
       const raw = typeof input === 'string' ? input : (input as URL).toString()
       const key = `${init?.method ?? 'GET'} ${new URL(raw).pathname}`
@@ -178,5 +184,75 @@ describe('withPolicyGate', () => {
     expect(requestCalls).toBe(1)
     expect(executeCalls).toBe(1)
     expect(auditCalls).toBe(4)
+  })
+})
+
+describe('agent 审计请求弹性', () => {
+  it('fetchJson 在单次请求超时后中止挂起的 fetch', async () => {
+    const options: AgentToolkitOptions = {
+      agentSessionId: 'sess-timeout',
+      baseUrl: 'http://api.test.local',
+      timeoutMs: 5,
+      fetch: ((_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('aborted', 'AbortError')),
+            { once: true },
+          )
+        })) as typeof fetch,
+    }
+
+    await expect(fetchJson(options, { path: '/v1/agent/policy' })).rejects.toMatchObject({
+      status: 0,
+      code: 'timeout',
+    })
+  })
+
+  it('markExecuted 对确定性 4xx 立即失败', async () => {
+    const calls: string[] = []
+    const options = makeOptions(
+      {
+        'POST /v1/agent/actions/act-4xx/executed': () => ({
+          status: 409,
+          body: { code: 'conflict', message: 'invalid action state' },
+        }),
+      },
+      calls,
+    )
+
+    await expect(markExecuted(options, 'act-4xx', { result: { ok: true } })).rejects.toMatchObject(
+      {
+        status: 409,
+        code: 'conflict',
+      },
+    )
+    expect(calls).toEqual(['POST /v1/agent/actions/act-4xx/executed'])
+  })
+
+  it('markExecuted 对临时错误按指数退避重试', async () => {
+    const calls: string[] = []
+    const delays: number[] = []
+    let attempts = 0
+    const options = makeOptions(
+      {
+        'POST /v1/agent/actions/act-retry/executed': () => {
+          attempts += 1
+          return attempts < 3
+            ? { status: 503, body: { code: 'temporary_unavailable' } }
+            : { body: { status: 'executed' } }
+        },
+      },
+      calls,
+    )
+    options.retry = { maxRetries: 2, baseDelayMs: 100, maxDelayMs: 1_000 }
+    options._random = () => 1
+    options._sleep = async (ms) => {
+      delays.push(ms)
+    }
+
+    await expect(markExecuted(options, 'act-retry', { result: { ok: true } })).resolves.toBeUndefined()
+    expect(calls).toHaveLength(3)
+    expect(delays).toEqual([100, 200])
   })
 })

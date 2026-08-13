@@ -72,22 +72,22 @@ export const WEBHOOK_DELIVERY_OUTPUT = z.object({
 
 export const AGENT_POLICY_OUTPUT = {
   id: z.string(),
-  allowed_tools: z.array(z.string()),
-  require_approval: z.boolean(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  allowedTools: z.array(z.string()),
+  requireApproval: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 }
 
 export const AGENT_ACTION_OUTPUT = z.object({
   id: z.string(),
-  agent_session_id: z.string(),
+  agentSessionId: z.string(),
   tool: z.string(),
   input: z.unknown(),
   status: z.string(),
-  approver_id: z.string().nullable(),
-  decided_at: z.string().nullable(),
-  executed_at: z.string().nullable(),
+  approverId: z.string().nullable(),
+  decidedAt: z.string().nullable(),
+  executedAt: z.string().nullable(),
   result: z.unknown(),
-  error_message: z.string().nullable(),
-  created_at: z.string(),
+  errorMessage: z.string().nullable(),
+  createdAt: z.string(),
 })

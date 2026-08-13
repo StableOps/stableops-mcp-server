@@ -33,6 +33,12 @@ The full tool reference, MCP host setup (Claude Desktop, Claude Code, Codex CLI,
 
 **Read the full documentation → https://stableops.dev/en/docs/agents/mcp-server**
 
+## Reliability and idempotency
+
+Agent policy and audit requests time out after 30 seconds by default. Audit-result writes retry network errors, timeouts, HTTP 429, and HTTP 5xx responses with exponential backoff; deterministic HTTP 4xx responses fail immediately. Programmatic users can override these defaults with the API SDK `timeoutMs` and `retry` client options.
+
+If an operation finishes but its audit result cannot be confirmed, the MCP server keeps the result in memory and retries only the audit write when the same tool input is submitted again. This compensation state does not survive a process restart. Always use a stable, unique business identifier such as `merchant_order_id` for create operations, and reconcile an uncertain result before retrying after a restart. StableOps enforces `merchant_order_id` uniqueness within an organization and environment.
+
 ## License
 
 Apache-2.0

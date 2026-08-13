@@ -19,6 +19,15 @@ type PendingAudit = {
 // 新 action 前补写旧记录，避免响应丢失后重复执行资金或配置写操作。
 const pendingAudits = new Map<string, PendingAudit>()
 
+const DEFAULT_TIMEOUT_MS = 30_000
+const DEFAULT_MAX_RETRIES = 2
+const DEFAULT_BASE_DELAY_MS = 200
+const DEFAULT_MAX_DELAY_MS = 5_000
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export async function withPolicyGate<T extends Record<string, unknown>>(
   options: AgentToolkitOptions,
   tool: string,
@@ -87,6 +96,8 @@ export async function requestAction(
   decision: 'auto_allowed' | 'pending_approval'
   actionId: string
 }> {
+  // action 申请本身会写审计记录，且服务端没有按 Idempotency-Key 缓存响应；这里只设置
+  // 单次请求超时，不做客户端盲重试，避免只读工具在响应丢失时生成重复审计记录。
   return fetchJson(options, {
     method: 'POST',
     path: '/v1/agent/actions',
@@ -103,8 +114,13 @@ export async function markExecuted(
   actionId: string,
   outcome: { result?: unknown; errorMessage?: string },
 ) {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxRetries = options.retry?.maxRetries ?? DEFAULT_MAX_RETRIES
+  const baseDelayMs = options.retry?.baseDelayMs ?? DEFAULT_BASE_DELAY_MS
+  const maxDelayMs = options.retry?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS
+  const sleep = options._sleep ?? defaultSleep
+  const random = options._random ?? Math.random
+
+  for (let attempt = 0; ; attempt++) {
     try {
       await fetchJson(options, {
         method: 'POST',
@@ -118,10 +134,11 @@ export async function markExecuted(
       })
       return
     } catch (err) {
-      lastError = err
+      if (!isRetryableAuditError(err) || attempt >= maxRetries) throw err
+      const base = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt)
+      await sleep(random() * base)
     }
   }
-  throw lastError
 }
 
 export async function fetchJson<T>(
@@ -129,28 +146,57 @@ export async function fetchJson<T>(
   init: { method?: 'GET' | 'POST'; path: string; body?: unknown },
 ): Promise<T> {
   const baseUrl = (options.baseUrl ?? 'https://api.stableops.dev').replace(/\/+$/u, '')
-  const fetchImpl = options.fetch ?? fetch
-  const res = await fetchImpl(`${baseUrl}${init.path}`, {
-    method: init.method ?? 'GET',
-    headers: {
-      'content-type': 'application/json',
-      accept: 'application/json',
-      ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
-    },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  })
-  const text = await res.text()
-  const parsed = text.length === 0 ? null : safeJson(text)
-  if (!res.ok) {
-    const body = parsed as Record<string, unknown> | null
+  const fetchImpl = options.fetch ?? fetch.bind(globalThis)
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const res = await fetchImpl(`${baseUrl}${init.path}`, {
+      method: init.method ?? 'GET',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
+      },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: controller.signal,
+    })
+    const text = await res.text()
+    const parsed = text.length === 0 ? null : safeJson(text)
+    if (!res.ok) {
+      const body = parsed as Record<string, unknown> | null
+      throw new StableOpsError(
+        res.status,
+        (body?.code as string) ?? `http_${res.status}`,
+        (body?.message as string) ?? res.statusText,
+        parsed,
+      )
+    }
+    return parsed as T
+  } catch (err) {
+    if (err instanceof StableOpsError) throw err
+    const timedOut = controller.signal.aborted
     throw new StableOpsError(
-      res.status,
-      (body?.code as string) ?? `http_${res.status}`,
-      (body?.message as string) ?? res.statusText,
-      parsed,
+      0,
+      timedOut ? 'timeout' : 'network_error',
+      timedOut
+        ? `Request timed out after ${timeoutMs}ms`
+        : err instanceof Error
+          ? err.message
+          : String(err),
+      err,
     )
+  } finally {
+    clearTimeout(timer)
   }
-  return parsed as T
+}
+
+function isRetryableAuditError(err: unknown): boolean {
+  return (
+    err instanceof StableOpsError &&
+    (err.status === 0 || err.status === 429 || err.status >= 500)
+  )
 }
 
 export function safeJson(text: string): unknown {

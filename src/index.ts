@@ -31,11 +31,7 @@ export type { AgentToolkitOptions } from './toolkit'
 // 把 SDK 的资源 API 暴露成 MCP 工具。所有常规工具先登记 /v1/agent/actions：
 // policy 自动放行则执行并写回 executed；需要人工审批则返回 pending_approval。
 export function createAgentToolkitServer(options: AgentToolkitOptions): McpServer {
-  const client = new StableOps({
-    apiKey: options.apiKey,
-    baseUrl: options.baseUrl,
-    fetch: options.fetch,
-  })
+  const client = new StableOps(options)
 
   const server = new McpServer({ name: 'stableops', version: packageJson.version })
 

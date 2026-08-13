@@ -599,7 +599,7 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
 
     const res = await client.callTool({ name: AgentToolName.GET_AGENT_POLICY, arguments: {} })
     expect(res.isError).toBeFalsy()
-    expect(res.structuredContent).toMatchObject({ allowed_tools: ['get_order'] })
+    expect(res.structuredContent).toMatchObject({ allowedTools: ['get_order'] })
 
     const tools = await client.listTools()
     const names = tools.tools.map((tool) => tool.name)
@@ -607,6 +607,89 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     expect(names).not.toContain('approve_agent_action')
     expect(names).not.toContain('reject_agent_action')
     expect(names).not.toContain('revoke_agent_session')
+  })
+
+  it('list_agent_sessions：经 SDK 返回 camelCase 会话与分页字段', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'GET /v1/agent/sessions': () => ({
+        items: [
+          {
+            id: 'as_1',
+            label: 'ops-bot',
+            created_at: '2026-07-01T00:00:00.000Z',
+            expires_at: null,
+            revoked_at: null,
+          },
+        ],
+        has_more: false,
+        total: 1,
+      }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.LIST_AGENT_SESSIONS,
+      arguments: { limit: 10 },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({
+      items: [{ id: 'as_1', createdAt: '2026-07-01T00:00:00.000Z', revokedAt: null }],
+      hasMore: false,
+      total: 1,
+    })
+  })
+
+  it('list_agent_actions：经 SDK 返回 camelCase 审计字段', async () => {
+    const { client, server } = await connect({
+      ...AUTO_ALLOW,
+      'GET /v1/agent/actions': () => ({
+        items: [
+          {
+            id: 'aa_1',
+            agent_session_id: 'as_1',
+            tool: 'create_payment_order',
+            input: { amount: '12.00' },
+            status: 'executed',
+            approver_id: null,
+            decided_at: null,
+            executed_at: '2026-07-01T00:02:00.000Z',
+            result: { payment_order_id: 'po_1' },
+            error_message: null,
+            created_at: '2026-07-01T00:00:00.000Z',
+          },
+        ],
+        has_more: false,
+        total: 1,
+      }),
+    })
+    close = async () => {
+      await client.close()
+      await server.close()
+    }
+
+    const res = await client.callTool({
+      name: AgentToolName.LIST_AGENT_ACTIONS,
+      arguments: { session_id: 'as_1' },
+    })
+
+    expect(res.isError).toBeFalsy()
+    expect(res.structuredContent).toMatchObject({
+      items: [
+        {
+          id: 'aa_1',
+          agentSessionId: 'as_1',
+          executedAt: '2026-07-01T00:02:00.000Z',
+          errorMessage: null,
+        },
+      ],
+      hasMore: false,
+      total: 1,
+    })
   })
 
   it('restore_agent_session：经策略门控恢复会话', async () => {
@@ -631,6 +714,6 @@ describe('agent toolkit — outputSchema / structuredContent', { timeout: 15_000
     })
 
     expect(res.isError).toBeFalsy()
-    expect(res.structuredContent).toMatchObject({ id: 'as_1', revoked_at: null })
+    expect(res.structuredContent).toMatchObject({ id: 'as_1', revokedAt: null })
   })
 })
