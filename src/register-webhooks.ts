@@ -125,6 +125,8 @@ export function registerWebhookTools(
       description: 'Read the recent webhook deliveries (read-only).',
       inputSchema: {
         status: z.string().optional(),
+        delivery_id: z.string().optional(),
+        replay_of_delivery_id: z.string().optional(),
         endpoint_id: z.string().optional(),
         payment_order_id: z.string().optional(),
         ...COMMON_LIST_INPUT,
@@ -139,6 +141,8 @@ export function registerWebhookTools(
       withPolicyGate(options, AgentToolName.LIST_WEBHOOK_DELIVERIES, args, async () =>
         client.webhooks.listDeliveriesPage({
           status: args.status as never,
+          deliveryId: args.delivery_id,
+          replayOfDeliveryId: args.replay_of_delivery_id,
           endpointId: args.endpoint_id,
           paymentOrderId: args.payment_order_id,
           limit: args.limit,

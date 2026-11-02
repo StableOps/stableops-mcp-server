@@ -52,6 +52,7 @@ export const TIMELINE_ENTRY_OUTPUT = z.object({
 })
 
 export const WEBHOOK_DELIVERY_OUTPUT = z.object({
+  replayOfDeliveryId: z.string().nullable().optional(),
   id: z.string(),
   webhookEndpointId: z.string(),
   eventId: z.string(),
